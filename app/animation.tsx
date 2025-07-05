@@ -13,6 +13,7 @@ import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
+import { designTokens } from './styles/designTokens';
 
 
 const { width, height } = Dimensions.get('window');
@@ -426,32 +427,32 @@ export default function AnimationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colors.aliceBlue,
   },
   dotsContainer: {
     position: 'absolute',
     flexDirection: 'row',
     justifyContent: 'center',
-    bottom: 50,
+    bottom: designTokens.spacing.xxl,
     alignSelf: 'center',
     zIndex: 10,
   },
   sequenceDot: {
     width: 16,
     height: 16,
-    borderRadius: 8,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 8,
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.mediumGray,
+    marginHorizontal: designTokens.spacing.sm,
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: designTokens.colors.lightGray,
   },
   activeDot: {
-    backgroundColor: '#808080',
-    borderColor: '#606060',
+    backgroundColor: designTokens.colors.primary,
+    borderColor: designTokens.colors.primaryDark,
   },
   errorDot: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF3333',
+    backgroundColor: designTokens.colors.error,
+    borderColor: designTokens.colors.anxietyRed,
   },
   animationContainer: {
     flex: 1,
@@ -461,8 +462,8 @@ const styles = StyleSheet.create({
   circle: {
     position: 'absolute',
     borderWidth: 4,
-    borderColor: '#000000',
-    borderRadius: 1000,
+    borderColor: designTokens.colors.charcoal,
+    borderRadius: designTokens.borderRadius.full,
   },
   circle1: {
     width: 120,
@@ -474,7 +475,7 @@ const styles = StyleSheet.create({
   },
   square: {
     position: 'absolute',
-    backgroundColor: '#000000',
+    backgroundColor: designTokens.colors.darkGray,
   },
   square1: {
     width: 60,
@@ -488,12 +489,12 @@ const styles = StyleSheet.create({
   },
   wrongSequenceIndicator: {
     position: 'absolute',
-    top: 50,
+    top: designTokens.spacing.xxl,
     alignSelf: 'center',
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: '#FF6B6B',
+    borderRadius: designTokens.borderRadius.sm / 2,
+    backgroundColor: designTokens.colors.error,
     opacity: 0.8,
   },
 

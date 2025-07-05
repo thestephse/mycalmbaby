@@ -6,13 +6,20 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Switch,
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import AudioManager from './utils/AudioManager';
+import { designTokens } from './styles/designTokens';
+import {
+  PrimaryButton,
+  PillButton,
+  Card,
+  Toggle,
+  SectionHeader,
+} from './components/UIComponents';
 
 type SleepTimer = 15 | 30 | 60;
 
@@ -30,29 +37,23 @@ export default function MainMenuScreen() {
   const [animationPacks, setAnimationPacks] = useState<AnimationPack[]>([
     { id: 'default', name: 'Basic Shapes', price: 'Free', purchased: true },
     { id: 'nature', name: 'Nature Patterns', price: '', purchased: false },
-    { id: 'geometric', name: 'Geometric Flow', price: '', purchased: false },
-    { id: 'organic', name: 'Organic Forms', price: '', purchased: false },
+    // Removed unused variables
   ]);
 
   useEffect(() => {
-    const loadAndApplySettings = async () => {
+    const loadSettings = async () => {
       try {
-        const savedTimer = await AsyncStorage.getItem('sleepTimer');
         const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
+        const savedTimer = await AsyncStorage.getItem('sleepTimer');
         const savedPacks = await AsyncStorage.getItem('purchasedPacks');
 
-        const isNoiseEnabled = savedWhiteNoise === null || savedWhiteNoise === 'true';
-        setWhiteNoiseEnabled(isNoiseEnabled);
-
-        if (isNoiseEnabled) {
-          AudioManager.play();
-        } else {
-          AudioManager.stop();
+        if (savedWhiteNoise !== null) {
+          setWhiteNoiseEnabled(savedWhiteNoise === 'true');
         }
-
         if (savedTimer) {
           setSleepTimer(parseInt(savedTimer) as SleepTimer);
         }
+
         if (savedPacks) {
           const purchasedIds = JSON.parse(savedPacks);
           setAnimationPacks(prev => 
@@ -67,7 +68,7 @@ export default function MainMenuScreen() {
       }
     };
 
-    loadAndApplySettings();
+    loadSettings();
   }, []);
 
   const handlePlay = () => {
@@ -81,6 +82,13 @@ export default function MainMenuScreen() {
 
   const handleWhiteNoiseToggle = async (value: boolean) => {
     setWhiteNoiseEnabled(value);
+    await AsyncStorage.getItem('sleepTimer').then((value) => {
+      if (value) {
+        setSleepTimer(parseInt(value) as SleepTimer);
+      }
+    }).catch((error) => {
+      console.error('Failed to get sleep timer:', error);
+    });
     await AsyncStorage.setItem('whiteNoiseEnabled', value.toString());
     if (value) {
       AudioManager.play();
@@ -121,7 +129,8 @@ export default function MainMenuScreen() {
         
         Alert.alert('Success', 'Animation pack purchased successfully!');
       }
-    } catch (_) {
+    } catch (error) {
+      console.error('Purchase failed:', error);
       Alert.alert('Error', 'Failed to complete purchase. Please try again.');
     }
   };
@@ -131,72 +140,59 @@ export default function MainMenuScreen() {
   };
 
   const renderSleepTimerSelector = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Sleep Timer</Text>
+    <Card style={styles.section}>
+      <SectionHeader title="Sleep Timer" />
       <View style={styles.segmentedControl}>
         {[15, 30, 60].map((timer) => (
-          <TouchableOpacity
+          <PillButton
             key={timer}
-            style={[
-              styles.segmentButton,
-              sleepTimer === timer && styles.segmentButtonActive
-            ]}
+            title={`${timer}m`}
             onPress={() => handleSleepTimerChange(timer as SleepTimer)}
-          >
-            <Text style={[
-              styles.segmentButtonText,
-              sleepTimer === timer && styles.segmentButtonTextActive
-            ]}>
-              {timer}m
-            </Text>
-          </TouchableOpacity>
+            active={sleepTimer === timer}
+            style={styles.timerButton}
+          />
         ))}
       </View>
-    </View>
+    </Card>
   );
 
   const renderWhiteNoiseToggle = () => (
-    <View style={styles.section}>
-      <View style={styles.toggleRow}>
-        <Text style={styles.toggleLabel}>White Noise</Text>
-        <Switch
-          value={whiteNoiseEnabled}
-          onValueChange={handleWhiteNoiseToggle}
-          trackColor={{ false: '#E0E0E0', true: '#00BFA6' }}
-          thumbColor={whiteNoiseEnabled ? '#FFFFFF' : '#BDBDBD'}
-        />
-      </View>
-    </View>
+    <Card style={styles.section}>
+      <Toggle
+        value={whiteNoiseEnabled}
+        onValueChange={handleWhiteNoiseToggle}
+        label="White Noise"
+      />
+    </Card>
   );
 
   const renderAnimationPacks = () => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Animation Packs</Text>
+    <Card style={styles.section}>
+      <SectionHeader title="Animation Packs" />
       {animationPacks.map((pack) => (
-        <View key={pack.id} style={styles.packCard}>
+        <Card key={pack.id} style={styles.packCard}>
           <View style={styles.packThumbnail}>
-            <Ionicons name="play-circle-outline" size={32} color="#606060" />
+            <Ionicons name="play-circle-outline" size={32} color={designTokens.colors.primary} />
           </View>
           <View style={styles.packInfo}>
             <Text style={styles.packName}>{pack.name}</Text>
             {pack.price && <Text style={styles.packPrice}>{pack.price}</Text>}
           </View>
           {!pack.purchased ? (
-            <TouchableOpacity
-              style={[styles.purchaseButton, !pack.id.includes('default') && styles.disabledButton]}
+            <PrimaryButton
+              title="Download"
               onPress={() => handlePurchasePack(pack.id)}
               disabled={!pack.id.includes('default')}
-            >
-              <Text style={styles.purchaseButtonText}>Download</Text>
-            </TouchableOpacity>
+              style={styles.downloadButton}
+            />
           ) : (
             <View style={styles.purchasedBadge}>
-              <Ionicons name="checkmark-circle" size={24} color="#00BFA6" />
+              <Ionicons name="checkmark-circle" size={24} color={designTokens.colors.success} />
             </View>
           )}
-        </View>
+        </Card>
       ))}
-    </View>
+    </Card>
   );
 
   return (
@@ -239,14 +235,14 @@ export default function MainMenuScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colors.aliceBlue,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    paddingHorizontal: 24,
-    paddingBottom: 32,
+    paddingHorizontal: designTokens.spacing.lg,
+    paddingBottom: designTokens.spacing.xl,
   },
   header: {
     alignItems: 'center',
@@ -307,19 +303,20 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
   },
   playButton: {
-    backgroundColor: '#00BFA6',
+    backgroundColor: designTokens.colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
-    borderRadius: 12,
-    marginBottom: 32,
-    gap: 12,
+    paddingVertical: designTokens.spacing.lg,
+    borderRadius: designTokens.borderRadius.md,
+    marginBottom: designTokens.spacing.xl,
+    gap: designTokens.spacing.sm,
+    ...designTokens.shadows.md,
   },
   playButtonText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
+    color: designTokens.colors.white,
+    fontSize: designTokens.typography.sizes.lg,
+    fontWeight: designTokens.typography.weights.semibold,
   },
   section: {
     marginBottom: 24,
@@ -332,15 +329,19 @@ const styles = StyleSheet.create({
   },
   segmentedControl: {
     flexDirection: 'row',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 8,
-    padding: 4,
+    backgroundColor: designTokens.colors.lightGray,
+    borderRadius: designTokens.borderRadius.sm,
+    padding: designTokens.spacing.xs,
+    gap: designTokens.spacing.xs,
   },
-  segmentButton: {
+  timerButton: {
     flex: 1,
-    paddingVertical: 12,
-    alignItems: 'center',
-    borderRadius: 6,
+  },
+  downloadButton: {
+    minWidth: 100,
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.xs,
+    height: 36,
   },
   segmentButtonActive: {
     backgroundColor: '#00BFA6',
@@ -368,16 +369,17 @@ const styles = StyleSheet.create({
   packCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
+    backgroundColor: designTokens.colors.offWhite,
+    padding: designTokens.spacing.md,
+    borderRadius: designTokens.borderRadius.md,
+    marginBottom: designTokens.spacing.sm,
+    ...designTokens.shadows.sm,
   },
   packThumbnail: {
     width: 48,
     height: 48,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 8,
+    backgroundColor: designTokens.colors.mediumGray,
+    borderRadius: designTokens.borderRadius.sm,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,

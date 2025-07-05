@@ -9,6 +9,13 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  PrimaryButton,
+  SecondaryButton,
+  Card,
+  SectionHeader,
+} from './components/UIComponents';
+import { designTokens } from './styles/designTokens';
 import { Ionicons } from '@expo/vector-icons';
 
 type OnboardingStep = 'welcome' | 'explain-lock' | 'setup-sequence';
@@ -100,25 +107,23 @@ export default function OnboardingScreen() {
   };
 
   const renderWelcomeStep = () => (
-    <View style={styles.stepContainer}>
+    <Card style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="happy-outline" size={80} color="#1A1A1A" />
+        <Ionicons name="happy-outline" size={80} color={designTokens.colors.primary} />
       </View>
       <Text style={styles.headline}>CalmBaby</Text>
       <Text style={styles.subText}>
         Calming high-contrast animation + white noise for 0–12 mo
       </Text>
-      <TouchableOpacity
-        style={styles.nextButton}
+      <PrimaryButton
+        title="Get Started"
         onPress={() => setStep('explain-lock')}
-      >
-        <Text style={styles.nextButtonText}>Next</Text>
-      </TouchableOpacity>
-    </View>
+      />
+    </Card>
   );
 
   const renderExplainLockStep = () => (
-    <View style={styles.stepContainer}>
+    <Card style={styles.stepContainer}>
       <View style={styles.phoneOutline}>
         <View style={[styles.cornerDot, { top: 20, left: 20 }]}>
           <Text style={styles.cornerLabel}>TL</Text>
@@ -138,18 +143,16 @@ export default function OnboardingScreen() {
         To keep your baby safe, you&apos;ll create a 4-corner tap sequence that only you know. 
         This prevents accidental exits during use.
       </Text>
-      <TouchableOpacity
-        style={styles.nextButton}
+      <PrimaryButton
+        title="Set Up Sequence"
         onPress={() => setStep('setup-sequence')}
-      >
-        <Text style={styles.nextButtonText}>Next</Text>
-      </TouchableOpacity>
-    </View>
+      />
+    </Card>
   );
 
   const renderSetupSequenceStep = () => (
-    <View style={styles.stepContainer}>
-      <Text style={styles.headline}>Tap your four corners in order</Text>
+    <Card style={styles.stepContainer}>
+      <SectionHeader title="Tap your four corners in order" />
       <Text style={styles.bodyText}>
         Choose a sequence you&apos;ll remember. You can change this later in settings.
       </Text>
@@ -166,7 +169,7 @@ export default function OnboardingScreen() {
               ]}
               onPress={() => handleCornerTap(corner as Corner)}
             >
-              <Text style={styles.cornerButtonText}>{corner}</Text>
+              <Text style={[styles.cornerButtonText, tappedCorners.includes(corner as Corner) && styles.cornerButtonTextActive]}>{corner}</Text>
               {tappedCorners.includes(corner as Corner) && (
                 <Text style={styles.sequenceNumber}>
                   {tappedCorners.indexOf(corner as Corner) + 1}
@@ -200,21 +203,18 @@ export default function OnboardingScreen() {
       </View>
 
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.resetButton} onPress={resetSequence}>
-          <Text style={styles.resetButtonText}>Reset</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.confirmButton,
-            unlockSequence.length !== 4 && styles.confirmButtonDisabled
-          ]}
+        <SecondaryButton
+          title="Reset"
+          onPress={resetSequence}
+          style={styles.resetButton}
+        />
+        <PrimaryButton
+          title="Confirm Sequence"
           onPress={confirmSequence}
           disabled={unlockSequence.length !== 4}
-        >
-          <Text style={styles.confirmButtonText}>Confirm</Text>
-        </TouchableOpacity>
+        />
       </View>
-    </View>
+    </Card>
   );
 
   return (
@@ -230,64 +230,64 @@ const styles = StyleSheet.create({
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.md,
   },
   sequenceDot: {
     width: 16,
     height: 16,
-    borderRadius: 8,
-    backgroundColor: '#E0E0E0',
-    marginHorizontal: 8,
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.mediumGray,
+    marginHorizontal: designTokens.spacing.sm,
     borderWidth: 1,
-    borderColor: '#CCCCCC',
+    borderColor: designTokens.colors.lightGray,
   },
   activeDot: {
-    backgroundColor: '#808080',
-    borderColor: '#606060',
+    backgroundColor: designTokens.colors.primary,
+    borderColor: designTokens.colors.primaryDark,
   },
   errorDot: {
-    backgroundColor: '#FF6B6B',
-    borderColor: '#FF3333',
+    backgroundColor: designTokens.colors.error,
+    borderColor: designTokens.colors.anxietyRed,
   },
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: designTokens.colors.aliceBlue,
   },
   stepContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: designTokens.spacing.xl,
   },
   iconContainer: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: designTokens.colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 32,
   },
   headline: {
-    fontSize: 32,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontSize: designTokens.typography.sizes.xl,
+    fontWeight: designTokens.typography.weights.semibold,
+    color: designTokens.colors.charcoal,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: designTokens.spacing.md,
   },
   subText: {
-    fontSize: 16,
-    color: '#606060',
+    fontSize: designTokens.typography.sizes.base,
+    color: designTokens.colors.darkGray,
     textAlign: 'center',
-    marginBottom: 48,
+    marginBottom: designTokens.spacing.xxl,
     lineHeight: 24,
   },
   bodyText: {
-    fontSize: 16,
-    color: '#1A1A1A',
+    fontSize: designTokens.typography.sizes.base,
+    color: designTokens.colors.charcoal,
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: designTokens.spacing.xl,
     lineHeight: 24,
   },
   nextButton: {
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 350,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: designTokens.colors.lightGray,
     borderRadius: 20,
     borderStyle: 'dashed',
     position: 'relative',
@@ -347,18 +347,22 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: '#FAFAFA',
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: designTokens.colors.lightGray,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cornerButtonTapped: {
-    backgroundColor: '#00BFA6',
-    borderColor: '#00BFA6',
+    backgroundColor: designTokens.colors.primary,
+    borderColor: designTokens.colors.primaryDark,
   },
   cornerButtonText: {
-    color: '#1A1A1A',
+    color: designTokens.colors.charcoal,
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: designTokens.typography.weights.semibold,
+  },
+  cornerButtonTextActive: {
+    color: designTokens.colors.white,
+    fontWeight: designTokens.typography.weights.bold,
   },
   sequenceNumber: {
     position: 'absolute',
