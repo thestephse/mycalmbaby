@@ -17,7 +17,6 @@ import {
   PillButton,
   Card,
   Toggle,
-  SectionHeader,
 } from './components/UIComponents';
 import AnimationCarousel from './components/AnimationCarousel';
 import AnimationManager, { AnimationConfig } from './utils/AnimationManager';
@@ -108,7 +107,9 @@ export default function MainMenuScreen() {
 
   const renderSleepTimerSelector = () => (
     <Card style={styles.section}>
-      <SectionHeader title="Sleep Timer" />
+      <View style={styles.toggleContainer}>
+        <Text style={styles.toggleLabel}>Sleep Timer</Text>
+      </View>
       <View style={styles.segmentedControl}>
         {[15, 30, 60].map((timer) => (
           <PillButton
@@ -175,6 +176,13 @@ export default function MainMenuScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Toggle styles for consistency
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: designTokens.spacing.sm,
+  },
   container: {
     flex: 1,
     backgroundColor: designTokens.colors.aliceBlue,
@@ -244,7 +252,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '600',
     color: '#1A1A1A',
   },
@@ -309,9 +317,8 @@ const styles = StyleSheet.create({
   },
   toggleLabel: {
     fontSize: 16,
-    color: '#1A1A1A',
+    color: designTokens.colors.charcoal,
     fontWeight: '500',
-    opacity: 0.6,
   },
   bottomActions: {
     alignItems: 'center',
