@@ -29,181 +29,36 @@ export interface AnimationElement {
   };
 }
 
-// Default animations that are bundled with the app
-const DEFAULT_ANIMATIONS: AnimationConfig[] = [
+// Available animations that will be discovered dynamically
+const ANIMATION_FOLDERS = [
+  'basic-shapes',
+  'nature-patterns',
+  'space-journey',
+  // Add more animation folders here as they are created
+];
+
+// Fallback animations in case dynamic loading fails
+const FALLBACK_ANIMATIONS: AnimationConfig[] = [
   {
     id: 'basic-shapes',
     name: 'Basic Shapes',
     description: 'Simple geometric shapes with soothing animations',
     folder: 'basic-shapes',
-    // Use an existing image from the project instead of empty thumbnail
-    thumbnail: require('../../assets/images/icons/splash-icon-dark.png'),
-    elements: [
-      {
-        type: 'circle',
-        properties: {
-          size: 120,
-          color: '#3B82F6',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'circle',
-        properties: {
-          size: 80,
-          color: '#10B981',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'square',
-        properties: {
-          size: 60,
-          color: '#F59E0B',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'square',
-        properties: {
-          size: 40,
-          color: '#EF4444',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-    ],
+    thumbnail: require('../animations/basic-shapes/thumbnail.png'),
   },
   {
     id: 'nature-patterns',
     name: 'Nature Patterns',
     description: 'Organic shapes inspired by nature',
     folder: 'nature-patterns',
-    // Use an existing image from the project instead of empty thumbnail
-    thumbnail: require('../../assets/images/icons/splash-icon-light.png'),
-    elements: [
-      {
-        type: 'circle',
-        properties: {
-          size: 100,
-          color: '#047857',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'circle',
-        properties: {
-          size: 70,
-          color: '#065F46',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'circle',
-        properties: {
-          size: 50,
-          color: '#059669',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'square',
-        properties: {
-          size: 40,
-          color: '#34D399',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-    ],
+    thumbnail: require('../animations/nature-patterns/thumbnail.png'),
   },
   {
     id: 'space-journey',
     name: 'Space Journey',
-    description: 'Cosmic-inspired animation patterns',
+    description: 'Explore the cosmos with soothing space-themed animations',
     folder: 'space-journey',
-    // Use an existing image from the project instead of empty thumbnail
-    thumbnail: require('../../assets/images/icons/ios-tinted.png'),
-    elements: [
-      {
-        type: 'circle',
-        properties: {
-          size: 120,
-          color: '#312E81',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'circle',
-        properties: {
-          size: 90,
-          color: '#4F46E5',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'square',
-        properties: {
-          size: 60,
-          color: '#6366F1',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-      {
-        type: 'square',
-        properties: {
-          size: 30,
-          color: '#A5B4FC',
-          animations: {
-            rotate: true,
-            scale: true,
-            opacity: true,
-          },
-        },
-      },
-    ],
+    thumbnail: require('../animations/space-journey/thumbnail.png'),
   },
 ];
 
@@ -225,9 +80,6 @@ class AnimationManager {
 
   public async initialize(): Promise<void> {
     try {
-      // Start with default animations as fallback
-      this.animations = [...DEFAULT_ANIMATIONS];
-
       // Scan for animations in the file system
       await this.scanForAnimations();
 
@@ -264,34 +116,51 @@ class AnimationManager {
   // Scan the animations folder for animation configurations
   private async scanForAnimations(): Promise<void> {
     try {
-      // For development and testing, we'll use the default animations
-      // In a production environment, we would implement dynamic loading from the app bundle
-      // or from a remote source
-      
-      // Load animations from the default configurations
-      // This ensures we always have animations available even if dynamic loading fails
-      const loadedAnimations = [...DEFAULT_ANIMATIONS];
-      
-      // Set the animation code paths for each animation
-      loadedAnimations.forEach(animation => {
-        // Set the path to the animation.tsx file in the animation's folder
-        animation.animationCodePath = `../animations/${animation.folder}/animation`;
-      });
-      
-      // Try to get the selected animation ID from storage
-      const savedAnimationId = await AsyncStorage.getItem('selectedAnimation');
-      if (savedAnimationId) {
-        this.selectedAnimationId = savedAnimationId;
+      const loadedAnimations: AnimationConfig[] = [];
+
+      // Load animations from each folder in ANIMATION_FOLDERS
+      for (const folder of ANIMATION_FOLDERS) {
+        try {
+          let animationConfig: AnimationConfig | null = null;
+
+          switch (folder) {
+            case 'basic-shapes':
+              animationConfig = require('../animations/basic-shapes/animation.json');
+              if (animationConfig) animationConfig.thumbnail = require('../animations/basic-shapes/thumbnail.png');
+              break;
+            case 'nature-patterns':
+              animationConfig = require('../animations/nature-patterns/animation.json');
+              if (animationConfig) animationConfig.thumbnail = require('../animations/nature-patterns/thumbnail.png');
+              break;
+            case 'space-journey':
+              animationConfig = require('../animations/space-journey/animation.json');
+              if (animationConfig) animationConfig.thumbnail = require('../animations/space-journey/thumbnail.png');
+              break;
+            default:
+              console.log(`No animation found for folder: ${folder}`);
+              continue;
+          }
+
+          if (animationConfig) {
+            animationConfig.animationCodePath = `../animations/${folder}/animation`;
+            loadedAnimations.push(animationConfig);
+          }
+        } catch (error) {
+          console.error(`Error loading animation from folder ${folder}:`, error);
+        }
       }
-      
-      // Set the animations array
-      this.animations = loadedAnimations;
-      
+
+      if (loadedAnimations.length === 0) {
+        console.warn('No animations loaded, using fallbacks');
+        this.animations = [...FALLBACK_ANIMATIONS];
+      } else {
+        this.animations = loadedAnimations;
+      }
+
       console.log(`Loaded ${this.animations.length} animations, selected: ${this.selectedAnimationId}`);
     } catch (error) {
       console.error('Error scanning for animations:', error);
-      // Ensure we always have the default animations available
-      this.animations = [...DEFAULT_ANIMATIONS];
+      this.animations = [...FALLBACK_ANIMATIONS];
     }
   }
 }

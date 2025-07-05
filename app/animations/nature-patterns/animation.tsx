@@ -1,169 +1,242 @@
-import React from 'react';
-import { Animated, View } from 'react-native';
-import { AnimationElement } from '../../utils/AnimationManager';
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated, Easing } from 'react-native';
 
 interface AnimationProps {
-  animationValue: Animated.Value;
-  rotationValue: Animated.Value;
-  scaleValue: Animated.Value;
-  elements: AnimationElement[];
-  styles: any;
+  width: number;
+  height: number;
+  onAnimationLoaded?: () => void;
 }
 
-/**
- * Nature Patterns Animation
- * 
- * This animation renders organic shapes inspired by nature with
- * smooth translation, scale, and opacity animations.
- */
-export default function NaturePatternsAnimation({
-  animationValue,
-  rotationValue,
-  scaleValue,
-  elements,
-  styles,
-}: AnimationProps) {
-  // Create additional animation values for translation
-  const translateXValue = React.useRef(new Animated.Value(0)).current;
-  const translateYValue = React.useRef(new Animated.Value(0)).current;
-  
-  // Start the translation animations
-  React.useEffect(() => {
-    // X translation animation
-    Animated.loop(
+// Nature-inspired animation component
+const NaturePatternsAnimation: React.FC<AnimationProps> = ({ width, height, onAnimationLoaded }) => {
+  // Animation values
+  const leaf1Animation = useRef(new Animated.Value(0)).current;
+  const leaf2Animation = useRef(new Animated.Value(0)).current;
+  const flower1Animation = useRef(new Animated.Value(0)).current;
+  const flower2Animation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // Notify parent that animation is loaded
+    if (onAnimationLoaded) {
+      onAnimationLoaded();
+    }
+
+    // Create animation sequence
+    const animateLeaf1 = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateXValue, {
+        Animated.timing(leaf1Animation, {
           toValue: 1,
-          duration: 5000,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(translateXValue, {
+        Animated.timing(leaf1Animation, {
           toValue: 0,
-          duration: 5000,
+          duration: 3000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
-    ).start();
-    
-    // Y translation animation
-    Animated.loop(
+    );
+
+    const animateLeaf2 = Animated.loop(
       Animated.sequence([
-        Animated.timing(translateYValue, {
+        Animated.timing(leaf2Animation, {
           toValue: 1,
-          duration: 7000,
+          duration: 4000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-        Animated.timing(translateYValue, {
+        Animated.timing(leaf2Animation, {
           toValue: 0,
-          duration: 7000,
+          duration: 4000,
+          easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
       ])
-    ).start();
-    
+    );
+
+    const animateFlower1 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flower1Animation, {
+          toValue: 1,
+          duration: 5000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(flower1Animation, {
+          toValue: 0,
+          duration: 5000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    const animateFlower2 = Animated.loop(
+      Animated.sequence([
+        Animated.timing(flower2Animation, {
+          toValue: 1,
+          duration: 6000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(flower2Animation, {
+          toValue: 0,
+          duration: 6000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+
+    // Start animations
+    animateLeaf1.start();
+    animateLeaf2.start();
+    animateFlower1.start();
+    animateFlower2.start();
+
     return () => {
-      // Clean up animations
-      translateXValue.stopAnimation();
-      translateYValue.stopAnimation();
+      // Stop animations on unmount
+      animateLeaf1.stop();
+      animateLeaf2.stop();
+      animateFlower1.stop();
+      animateFlower2.stop();
     };
-  }, [translateXValue, translateYValue]);
+  }, [leaf1Animation, leaf2Animation, flower1Animation, flower2Animation, onAnimationLoaded]);
+
+  // Leaf 1 animations
+  const leaf1Rotate = leaf1Animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '45deg'],
+  });
+
+  const leaf1Scale = leaf1Animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.2, 1],
+  });
+
+  // Leaf 2 animations
+  const leaf2Rotate = leaf2Animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-30deg'],
+  });
+
+  const leaf2Scale = leaf2Animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.3, 1],
+  });
+
+  // Flower 1 animations
+  const flower1Rotate = flower1Animation.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const flower1Scale = flower1Animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [1, 1.2, 1],
+  });
+
+  // Flower 2 animations
+  const flower2Opacity = flower2Animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.6, 1, 0.6],
+  });
+
+  const flower2Scale = flower2Animation.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.8, 1, 0.8],
+  });
 
   return (
-    <View style={styles.animationContainer}>
-      {elements.map((element, index) => {
-        const { type, properties } = element;
-        const { size, color, animations = {} } = properties;
+    <View style={[styles.container, { width, height }]}>
+      {/* Leaf 1 */}
+      <Animated.View
+        style={[
+          styles.leaf,
+          {
+            backgroundColor: '#4ADE80',
+            transform: [
+              { rotate: leaf1Rotate },
+              { scale: leaf1Scale },
+            ],
+            top: height * 0.3,
+            left: width * 0.2,
+          },
+        ]}
+      />
 
-        const transforms = [];
-        
-        // Apply animations based on element properties
-        if (animations.rotate) {
-          transforms.push({ 
-            rotate: rotationValue.interpolate({
-              inputRange: [0, 1],
-              outputRange: ['0deg', '360deg'],
-            }) 
-          });
-        }
-        
-        if (animations.scale) {
-          transforms.push({ scale: scaleValue });
-        }
-        
-        if (animations.translateX) {
-          transforms.push({ 
-            translateX: translateXValue.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 50 * (index % 2 === 0 ? 1 : -1)], // Alternate direction
-            }) 
-          });
-        }
-        
-        if (animations.translateY) {
-          transforms.push({ 
-            translateY: translateYValue.interpolate({
-              inputRange: [0, 1],
-              outputRange: [0, 30 * (index % 3 === 0 ? 1 : -1)], // Varied direction
-            }) 
-          });
-        }
+      {/* Leaf 2 */}
+      <Animated.View
+        style={[
+          styles.leaf,
+          {
+            backgroundColor: '#22C55E',
+            transform: [
+              { rotate: leaf2Rotate },
+              { scale: leaf2Scale },
+            ],
+            top: height * 0.6,
+            left: width * 0.7,
+          },
+        ]}
+      />
 
-        const opacityStyle = animations.opacity ? { opacity: animationValue } : {};
+      {/* Flower 1 */}
+      <Animated.View
+        style={[
+          styles.flower,
+          {
+            backgroundColor: '#EC4899',
+            transform: [
+              { rotate: flower1Rotate },
+              { scale: flower1Scale },
+            ],
+            top: height * 0.2,
+            left: width * 0.7,
+          },
+        ]}
+      />
 
-        switch (type) {
-          case 'circle':
-            return (
-              <Animated.View
-                key={`element-${index}`}
-                style={[
-                  styles.circle,
-                  {
-                    width: size,
-                    height: size,
-                    backgroundColor: color,
-                    transform: transforms,
-                    ...opacityStyle,
-                  },
-                ]}
-              />
-            );
-          case 'square':
-            return (
-              <Animated.View
-                key={`element-${index}`}
-                style={[
-                  styles.square,
-                  {
-                    width: size,
-                    height: size,
-                    backgroundColor: color,
-                    transform: transforms,
-                    ...opacityStyle,
-                  },
-                ]}
-              />
-            );
-          case 'triangle':
-            return (
-              <Animated.View
-                key={`element-${index}`}
-                style={[
-                  styles.triangle,
-                  {
-                    borderBottomWidth: size,
-                    borderLeftWidth: size / 2,
-                    borderRightWidth: size / 2,
-                    borderBottomColor: color,
-                    transform: transforms,
-                    ...opacityStyle,
-                  },
-                ]}
-              />
-            );
-          default:
-            return null;
-        }
-      })}
+      {/* Flower 2 */}
+      <Animated.View
+        style={[
+          styles.flower,
+          {
+            backgroundColor: '#F472B6',
+            opacity: flower2Opacity,
+            transform: [
+              { scale: flower2Scale },
+            ],
+            top: height * 0.7,
+            left: width * 0.3,
+          },
+        ]}
+      />
     </View>
   );
-}
+};
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+  },
+  leaf: {
+    position: 'absolute',
+    width: 80,
+    height: 120,
+    borderRadius: 40,
+  },
+  flower: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+});
+
+export default NaturePatternsAnimation;
