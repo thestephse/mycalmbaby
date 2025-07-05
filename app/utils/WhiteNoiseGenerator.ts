@@ -1,29 +1,28 @@
 import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
 
-/**
- * WhiteNoiseGenerator: A utility class for programmatically generating and playing white noise
- * using pink noise filtering for a more pleasant sound.
- */
+const FADE_DURATION = 2000; // 2 seconds for crossfade
+
 class WhiteNoiseGenerator {
   private static instance: WhiteNoiseGenerator;
-  private sound: Audio.Sound | null = null;
-  private isInitialized: boolean = false;
+  private sound1: Audio.Sound | null = null;
+  private sound2: Audio.Sound | null = null;
+  private activeSound: 'sound1' | 'sound2' = 'sound1';
   private isPlaying: boolean = false;
-  private fadeInterval: ReturnType<typeof setInterval> | null = null;
-  private currentVolume: number = 0.5;
-  private targetVolume: number = 0.5;
-  private fadeSteps: number = 20;
-  private fadeStepDuration: number = 50; // milliseconds
+  private isInitialized: boolean = false;
+  private volume: number = 1.0;
+  private playbackInterval: NodeJS.Timeout | null = null;
 
-  private constructor() {
-    // Private constructor to enforce singleton pattern
+  private constructor() {}
+
+  public static getInstance(): WhiteNoiseGenerator {
+    if (!WhiteNoiseGenerator.instance) {
+      WhiteNoiseGenerator.instance = new WhiteNoiseGenerator();
+    }
+    return WhiteNoiseGenerator.instance;
   }
 
-  /**
-   * Initialize the audio system
-   */
   public async initialize(): Promise<boolean> {
+    if (this.isInitialized) return true;
     try {
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
@@ -42,305 +41,131 @@ class WhiteNoiseGenerator {
     }
   }
 
-  /**
-   * Get the singleton instance
-   */
-  public static getInstance(): WhiteNoiseGenerator {
-    if (!WhiteNoiseGenerator.instance) {
-      WhiteNoiseGenerator.instance = new WhiteNoiseGenerator();
+  private async createSoundInstance(): Promise<Audio.Sound | null> {
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../assets/audio/white-noise.mp3'),
+        { shouldPlay: false, isLooping: false } // Looping is handled manually
+      );
+      return sound;
+    } catch (error) {
+      console.error('Failed to create sound instance:', error);
+      return null;
     }
-    return WhiteNoiseGenerator.instance;
   }
 
-  /**
-   * Generate white noise buffer with pink noise filtering
-   */
-  private generateWhiteNoiseBuffer(sampleRate: number = 44100, duration: number = 2): ArrayBuffer {
-    const numSamples = sampleRate * duration;
-    const buffer = new ArrayBuffer(44 + numSamples * 2); // WAV header + 16-bit samples
-    const view = new DataView(buffer);
-    
-    // WAV header
-    this.writeString(view, 0, 'RIFF');
-    view.setUint32(4, 36 + numSamples * 2, true);
-    this.writeString(view, 8, 'WAVE');
-    this.writeString(view, 12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, sampleRate, true);
-    view.setUint32(28, sampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    this.writeString(view, 36, 'data');
-    view.setUint32(40, numSamples * 2, true);
-    
-    // Pink noise generation using Paul Kellet's algorithm
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-    
-    for (let i = 0; i < numSamples; i++) {
-      const white = Math.random() * 2 - 1;
-      
-      // Pink noise filter
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      b3 = 0.86650 * b3 + white * 0.3104856;
-      b4 = 0.55000 * b4 + white * 0.5329522;
-      b5 = -0.7616 * b5 - white * 0.0168980;
-      
-      const pink = b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362;
-      b6 = white * 0.115926;
-      
-      // Convert to 16-bit integer and write to buffer
-      const sample = Math.max(-1, Math.min(1, pink * 0.11)) * 32767;
-      view.setInt16(44 + i * 2, sample, true);
-    }
-    
-    return buffer;
-  }
-
-  /**
-   * Helper function to write strings to DataView
-   */
-  private writeString = (view: DataView, offset: number, string: string): void => {
-    for (let i = 0; i < string.length; i++) {
-      view.setUint8(offset + i, string.charCodeAt(i));
-    }
-  };
-
-  /**
-   * Create white noise buffer and return as data URI
-   */
-
-
-  /**
-   * Load and prepare the white noise sound
-   */
   public async loadSound(): Promise<boolean> {
     if (!this.isInitialized) {
-      const initialized = await this.initialize();
-      if (!initialized) return false;
+      await this.initialize();
     }
-
-    try {
-      if (this.sound) {
-        await this.sound.unloadAsync();
-      }
-
-      const buffer = this.generateWhiteNoiseBuffer();
-      const uri = FileSystem.cacheDirectory + 'whitenoise.wav';
-
-      // Use a library to convert ArrayBuffer to Base64
-      const base64 = require('base64-js').fromByteArray(new Uint8Array(buffer));
-
-      await FileSystem.writeAsStringAsync(uri, base64, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        // @ts-ignore
-        { uri: uri },
-        {
-          shouldPlay: false,
-          isLooping: true,
-          volume: 0,
-        }
-      );
-
-      this.sound = sound;
-      return true;
-    } catch (error) {
-      console.error('Failed to load white noise sound:', error);
-      return false;
+    if (!this.sound1) {
+      this.sound1 = await this.createSoundInstance();
     }
+    if (!this.sound2) {
+      this.sound2 = await this.createSoundInstance();
+    }
+    return !!(this.sound1 && this.sound2);
   }
 
-  /**
-   * Start playing white noise with fade-in
-   */
-  public async play(volume: number = 0.5): Promise<boolean> {
-    if (!this.sound) {
-      const loaded = await this.loadSound();
-      if (!loaded) return false;
-    }
+  public async play(): Promise<boolean> {
+    if (!(await this.loadSound())) return false;
 
-    try {
-      this.targetVolume = Math.max(0, Math.min(1, volume));
-      
-      if (!this.isPlaying) {
-        await this.sound!.playAsync();
-        this.isPlaying = true;
-      }
-      
-      this.fadeIn();
-      return true;
-    } catch (error) {
-      console.error('Failed to play white noise:', error);
-      return false;
+    if (!this.isPlaying) {
+      this.isPlaying = true;
+      const sound = this.activeSound === 'sound1' ? this.sound1 : this.sound2;
+      await sound!.setVolumeAsync(this.volume);
+      await sound!.playAsync();
+      this.monitorPlayback();
     }
+    return true;
   }
 
-  /**
-   * Stop playing white noise with fade-out
-   */
   public async stop(): Promise<boolean> {
-    if (!this.sound || !this.isPlaying) {
-      return true;
+    if (!this.isPlaying) return true;
+    this.isPlaying = false;
+    if (this.playbackInterval) {
+      clearInterval(this.playbackInterval);
+      this.playbackInterval = null;
     }
-
-    try {
-      await this.fadeOut();
-      await this.sound.pauseAsync();
-      this.isPlaying = false;
-      return true;
-    } catch (error) {
-      console.error('Failed to stop white noise:', error);
-      return false;
-    }
+    await this.sound1?.stopAsync();
+    await this.sound2?.stopAsync();
+    return true;
   }
 
-  /**
-   * Set volume with smooth transition
-   */
-  public async setVolume(volume: number): Promise<void> {
-    if (!this.sound) return;
-
-    this.targetVolume = Math.max(0, Math.min(1, volume));
-
-    if (this.isPlaying) {
-      this.fadeToVolume(this.targetVolume);
-    }
-  }
-
-  /**
-   * Fade in effect
-   */
-  private fadeIn(): void {
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
+  private monitorPlayback() {
+    if (this.playbackInterval) {
+      clearInterval(this.playbackInterval);
     }
 
-    this.currentVolume = 0;
-    const volumeStep = this.targetVolume / this.fadeSteps;
+    this.playbackInterval = setInterval(async () => {
+      if (!this.isPlaying) return;
 
-    this.fadeInterval = setInterval(async () => {
-      this.currentVolume = Math.min(this.currentVolume + volumeStep, this.targetVolume);
+      const currentSound = this.activeSound === 'sound1' ? this.sound1 : this.sound2;
+      const status = await currentSound?.getStatusAsync();
 
-      if (this.sound) {
-        await this.sound.setVolumeAsync(this.currentVolume);
-      }
+      if (status?.isLoaded && status.isPlaying) {
+        const duration = status.durationMillis ?? 0;
+        const position = status.positionMillis;
 
-      if (this.currentVolume >= this.targetVolume) {
-        if (this.fadeInterval) {
-          clearInterval(this.fadeInterval);
-          this.fadeInterval = null;
+        if (duration - position < FADE_DURATION) {
+          this.crossfade();
         }
       }
-    }, this.fadeStepDuration);
+    }, 1000);
   }
 
-  /**
-   * Fade out effect
-   */
-  private async fadeOut(): Promise<void> {
-    return new Promise((resolve) => {
-      if (this.fadeInterval) {
-        clearInterval(this.fadeInterval);
-      }
+  private async crossfade() {
+    const inactiveSound = this.activeSound === 'sound1' ? this.sound2 : this.sound1;
+    const activeSound = this.activeSound === 'sound1' ? this.sound1 : this.sound2;
 
-      const volumeStep = this.currentVolume / this.fadeSteps;
+    // Switch active sound
+    this.activeSound = this.activeSound === 'sound1' ? 'sound2' : 'sound1';
 
-      this.fadeInterval = setInterval(async () => {
-        this.currentVolume = Math.max(this.currentVolume - volumeStep, 0);
+    await inactiveSound!.setPositionAsync(0);
+    await inactiveSound!.setVolumeAsync(0);
+    await inactiveSound!.playAsync();
 
-        if (this.sound) {
-          await this.sound.setVolumeAsync(this.currentVolume);
-        }
-
-        if (this.currentVolume <= 0) {
-          if (this.fadeInterval) {
-            clearInterval(this.fadeInterval);
-            this.fadeInterval = null;
-          }
-          resolve();
-        }
-      }, this.fadeStepDuration);
+    // Fade in the new sound
+    this.fade(inactiveSound!, this.volume);
+    // Fade out the old sound
+    this.fade(activeSound!, 0, async () => {
+      await activeSound!.stopAsync();
     });
   }
 
-  /**
-   * Fade to specific volume
-   */
-  private fadeToVolume(targetVolume: number): void {
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
+  private async fade(sound: Audio.Sound, toVolume: number, onComplete?: () => void) {
+    const fromVolume = (await sound.getStatusAsync() as any)?.volume ?? 0;
+    const steps = 20;
+    const stepDuration = FADE_DURATION / steps;
+
+    for (let i = 0; i < steps; i++) {
+      const newVolume = fromVolume + (toVolume - fromVolume) * (i / steps);
+      await sound.setVolumeAsync(newVolume);
+      await new Promise(resolve => setTimeout(resolve, stepDuration));
     }
-
-    const volumeDiff = targetVolume - this.currentVolume;
-    const volumeStep = volumeDiff / this.fadeSteps;
-
-    this.fadeInterval = setInterval(async () => {
-      this.currentVolume += volumeStep;
-
-      if (this.sound) {
-        await this.sound.setVolumeAsync(this.currentVolume);
-      }
-
-      if (Math.abs(this.currentVolume - targetVolume) < Math.abs(volumeStep)) {
-        this.currentVolume = targetVolume;
-        if (this.sound) {
-          await this.sound.setVolumeAsync(this.currentVolume);
-        }
-        if (this.fadeInterval) {
-          clearInterval(this.fadeInterval);
-          this.fadeInterval = null;
-        }
-      }
-    }, this.fadeStepDuration);
+    await sound.setVolumeAsync(toVolume);
+    onComplete?.();
   }
 
-  /**
-   * Check if currently playing
-   */
+  public async setVolume(volume: number): Promise<void> {
+    this.volume = Math.max(0, Math.min(1, volume));
+    if (this.isPlaying) {
+      const sound = this.activeSound === 'sound1' ? this.sound1 : this.sound2;
+      await sound!.setVolumeAsync(this.volume);
+    }
+  }
+
   public isCurrentlyPlaying(): boolean {
     return this.isPlaying;
   }
 
-  /**
-   * Get current volume
-   */
-  public getCurrentVolume(): number {
-    return this.currentVolume;
-  }
-
-  /**
-   * Clean up resources
-   */
   public async cleanup(): Promise<void> {
-    try {
-      if (this.fadeInterval) {
-        clearInterval(this.fadeInterval);
-        this.fadeInterval = null;
-      }
-
-      if (this.sound) {
-        await this.sound.unloadAsync();
-        this.sound = null;
-      }
-
-      const uri = FileSystem.cacheDirectory + 'whitenoise.wav';
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (fileInfo.exists) {
-        await FileSystem.deleteAsync(uri);
-      }
-
-      this.isPlaying = false;
-      this.currentVolume = 0;
-    } catch (error) {
-      console.error('Error during cleanup:', error);
-    }
+    this.stop();
+    await this.sound1?.unloadAsync();
+    await this.sound2?.unloadAsync();
+    this.sound1 = null;
+    this.sound2 = null;
+    this.isInitialized = false;
   }
 }
 
