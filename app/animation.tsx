@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
+  Text,
   StyleSheet,
   Dimensions,
   PanResponder,
   Animated,
   BackHandler,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -346,6 +348,14 @@ export default function AnimationScreen() {
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
+      <View style={styles.header}>
+        <Image 
+          source={require('../assets/images/icons/splash-icon-dark.png')} 
+          style={styles.logoImage} 
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>My Calm Baby</Text>
+      </View>
       {/* Main Animation Elements */}
       <View style={styles.animationContainer}>
         {/* Circle 1 */}
@@ -428,6 +438,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: designTokens.colors.aliceBlue,
+  },
+  header: {
+    alignItems: 'center',
+    paddingVertical: designTokens.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: designTokens.spacing.md,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    marginRight: designTokens.spacing.sm,
+  },
+  title: {
+    fontSize: designTokens.typography.sizes.lg,
+    fontWeight: designTokens.typography.weights.semibold,
+    color: designTokens.colors.charcoal,
   },
   dotsContainer: {
     position: 'absolute',

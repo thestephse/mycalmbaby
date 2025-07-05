@@ -6,6 +6,7 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,7 +17,6 @@ import {
   SectionHeader,
 } from './components/UIComponents';
 import { designTokens } from './styles/designTokens';
-import { Ionicons } from '@expo/vector-icons';
 
 type OnboardingStep = 'welcome' | 'explain-lock' | 'setup-sequence';
 type Corner = 'TL' | 'TR' | 'BL' | 'BR';
@@ -109,11 +109,15 @@ export default function OnboardingScreen() {
   const renderWelcomeStep = () => (
     <Card style={styles.stepContainer}>
       <View style={styles.iconContainer}>
-        <Ionicons name="happy-outline" size={80} color={designTokens.colors.primary} />
+        <Image 
+          source={require('../assets/images/icons/splash-icon-light.png')} 
+          style={styles.splashIcon} 
+          resizeMode="contain"
+        />
       </View>
-      <Text style={styles.headline}>CalmBaby</Text>
+      <Text style={styles.headline}>My Calm Baby</Text>
       <Text style={styles.subText}>
-        Calming high-contrast animation + white noise for 0–12 mo
+        Soothing animations and gentle sounds to help your little one relax and sleep
       </Text>
       <PrimaryButton
         title="Get Started"
@@ -227,6 +231,23 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
+  header: {
+    alignItems: 'center',
+    paddingVertical: designTokens.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: designTokens.spacing.md,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+    marginRight: designTokens.spacing.sm,
+  },
+  title: {
+    fontSize: designTokens.typography.sizes.lg,
+    fontWeight: designTokens.typography.weights.semibold,
+    color: designTokens.colors.charcoal,
+  },
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -329,6 +350,10 @@ const styles = StyleSheet.create({
   sequenceContainer: {
     alignItems: 'center',
     marginBottom: 32,
+  },
+  splashIcon: {
+    width: 120,
+    height: 120,
   },
   phoneOutlineSetup: {
     width: 250,

@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ScrollView,
   Alert,
+  Image
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -200,15 +201,11 @@ export default function MainMenuScreen() {
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <View style={styles.logoBackground}>
-              <View style={styles.logoCircle}>
-                {/* Small circles representing the SVG pattern */}
-                <View style={[styles.smallCircle, styles.smallCircleTop]} />
-                <View style={[styles.smallCircle, styles.smallCircleRight]} />
-                <View style={[styles.smallCircle, styles.smallCircleBottom]} />
-                <View style={[styles.smallCircle, styles.smallCircleLeft]} />
-              </View>
-            </View>
+            <Image 
+              source={require('../assets/images/icons/splash-icon-light.png')} 
+              style={styles.logoImage} 
+              resizeMode="contain"
+            />
           </View>
           <Text style={styles.title}>My Calm Baby</Text>
         </View>
@@ -254,6 +251,10 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     marginRight: 12,
+  },
+  logoImage: {
+    width: 50,
+    height: 50,
   },
   logoBackground: {
     width: 50,
