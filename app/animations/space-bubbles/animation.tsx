@@ -1,6 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, GestureResponderEvent } from 'react-native';
-import Canvas, { CanvasRenderingContext2D } from 'react-native-canvas';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, StyleSheet, Dimensions, Animated, Easing, TouchableWithoutFeedback } from 'react-native';
 import type { AnimationElement } from '../../utils/AnimationManager';
 
 interface AnimationProps {
@@ -11,228 +10,467 @@ interface AnimationProps {
 }
 
 // Animation constants
-const INITIAL_BUBBLE_COUNT = 8;
-const BUBBLE_MIN_RAD = 16;
-const BUBBLE_MAX_RAD = 40;
-const CHILD_COUNT_MIN = 2;
+const INITIAL_BUBBLE_COUNT = 15;
+const BUBBLE_MIN_SIZE = 30;
+const BUBBLE_MAX_SIZE = 80;
+const CHILD_COUNT_MIN = 3;
 const CHILD_COUNT_MAX = 5;
-const BURST_SPEED = 100;
-const BUBBLE_SPEED = 12;
+const BUBBLE_SPEED = 0.8;
+const BUBBLE_FLOAT_INTERVAL = 50; // ms - more frequent updates for smoother animation
 const DOT_COUNT = 12;
-const DOT_RAD = 8;
-const DOT_BURST_DIST = 40;
-const DOT_LIFETIME = 1.0;
+const DOT_SIZE = 10;
+const DOT_LIFETIME = 1000; // ms
+const BURST_PARTICLE_COUNT = 8; // particles when bubble bursts
 
-/**
- * Bubble state and logic
- */
-class Bubble {
-  x: number;
-  y: number;
-  r: number;
-  vx: number;
-  vy: number;
-
-  constructor(x: number | null, y: number | null, r: number | null, vx: number = 0, vy: number = 0, W: number, H: number) {
-    this.x = x != null ? x : Math.random() * W;
-    this.y = y != null ? y : Math.random() * H;
-    this.r =
-      r != null
-        ? r
-        : Math.random() * (BUBBLE_MAX_RAD - BUBBLE_MIN_RAD) + BUBBLE_MIN_RAD;
-    this.vx = vx;
-    this.vy = vy;
-  }
-
-  update(dt: number, tilt: { x: number; y: number }, W: number, H: number): void {
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
-    this.x += tilt.x * BUBBLE_SPEED * dt;
-    this.y += tilt.y * BUBBLE_SPEED * dt;
-    this.vx *= 0.95;
-    this.vy *= 0.95;
-    if (this.y < -this.r) {
-      this.y = H + this.r;
-      this.x = Math.random() * W;
-      this.vx = 0;
-      this.vy = 0;
-    }
-  }
-
-  draw(ctx: CanvasRenderingContext2D): void {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  contains(px: number, py: number): boolean {
-    const dx = px - this.x;
-    const dy = py - this.y;
-    return dx * dx + dy * dy <= this.r * this.r;
-  }
+// Bubble animation types
+interface Bubble {
+  id: string;
+  x: Animated.Value;
+  y: Animated.Value;
+  size: number;
+  opacity: Animated.Value;
+  scale: Animated.Value;
+  color: string;
+  highlight: boolean;
 }
 
-/**
- * Dot for tap bursts
- */
-class Dot {
-  cx: number;
-  cy: number;
-  angle: number;
-  vx: number;
-  vy: number;
-  elapsed: number;
-
-  constructor(cx: number, cy: number) {
-    this.cx = cx;
-    this.cy = cy;
-    this.angle = Math.random() * Math.PI * 2;
-    const speed = DOT_BURST_DIST / DOT_LIFETIME;
-    this.vx = Math.cos(this.angle) * speed;
-    this.vy = Math.sin(this.angle) * speed;
-    this.elapsed = 0;
-  }
-
-  update(dt: number): void {
-    this.elapsed += dt;
-  }
-
-  draw(ctx: CanvasRenderingContext2D): boolean {
-    const t = this.elapsed / DOT_LIFETIME;
-    if (t > 1) return false;
-    const x = this.cx + this.vx * this.elapsed;
-    const y = this.cy + this.vy * this.elapsed;
-    const rad = DOT_RAD * (1 - 0.4 * t);
-    ctx.globalAlpha = 1 - t;
-    ctx.beginPath();
-    ctx.arc(x, y, rad, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    return true;
-  }
+interface Dot {
+  id: string;
+  x: Animated.Value;
+  y: Animated.Value;
+  size: number;
+  opacity: Animated.Value;
+  scale: Animated.Value;
 }
 
-function SpaceBubblesAnimation({ 
-  width = Dimensions.get('window').width, 
-  height = Dimensions.get('window').height,
+const SpaceBubblesAnimation = React.memo(({ 
+  width: propWidth = Dimensions.get('window').width, 
+  height: propHeight = Dimensions.get('window').height,
   elements = [],
   onAnimationLoaded
-}: AnimationProps) {
-  const canvasRef = useRef<Canvas | null>(null);
-  const tilt = useRef<{ x: number; y: number }>({ x: 0, y: -1 });
-  const bubbles = useRef<Bubble[]>([]);
-  const dots = useRef<Dot[]>([]);
-  const W = width;
-  const H = height;
+}: AnimationProps) => {
+  // Container dimensions (updated via onLayout)
+  const [containerDims, setContainerDims] = useState({ width: propWidth, height: propHeight });
 
-  /**
-   * Initialize bubbles
-   */
-  const init = (ctx: CanvasRenderingContext2D): void => {
-    ctx.fillStyle = '#ffffff';
-    for (let i = 0; i < INITIAL_BUBBLE_COUNT; i++) {
-      bubbles.current.push(new Bubble(null, null, null, 0, 0, W, H));
-    }
-    loop(ctx);
-  };
-
-  /**
-   * Main animation loop
-   */
-  const loop = (ctx: CanvasRenderingContext2D): void => {
-    let last = Date.now();
-    const frame = (): void => {
-      const now = Date.now();
-      const dt = (now - last) / 1000;
-      last = now;
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#ffffff';
-      bubbles.current.forEach((b) => {
-        b.update(dt, tilt.current, W, H);
-        b.draw(ctx);
-      });
-      for (let i = dots.current.length - 1; i >= 0; i--) {
-        if (!dots.current[i].draw(ctx)) dots.current.splice(i, 1);
-        else dots.current[i].update(dt);
-      }
-      ctx.commit && ctx.commit(); // for react-native-canvas
-      requestAnimationFrame(frame);
-    };
-    frame();
-  };
-
-  /**
-   * Handle touch: split or dot burst
-   */
-  const handleTouch = (e: GestureResponderEvent): void => {
-    const { locationX: x, locationY: y } = e.nativeEvent;
-    // check bubble hit
-    for (let i = bubbles.current.length - 1; i >= 0; i--) {
-      if (bubbles.current[i].contains(x, y)) {
-        const parent = bubbles.current.splice(i, 1)[0];
-        const count =
-          Math.floor(Math.random() * (CHILD_COUNT_MAX - CHILD_COUNT_MIN + 1)) +
-          CHILD_COUNT_MIN;
-        const parentArea = Math.PI * parent.r * parent.r;
-        const weights = Array.from({ length: count }, () => Math.random());
-        const sumW = weights.reduce((a, b) => a + b, 0);
-        for (let j = 0; j < count; j++) {
-          const area = (weights[j] / sumW) * parentArea;
-          const r = Math.sqrt(area / Math.PI);
-          const angle = Math.random() * Math.PI * 2;
-          const vx = Math.cos(angle) * BURST_SPEED;
-          const vy = Math.sin(angle) * BURST_SPEED;
-          bubbles.current.push(new Bubble(x, y, r, vx, vy, W, H));
-        }
-        return;
-      }
-    }
-    // otherwise dot burst
-    for (let i = 0; i < DOT_COUNT; i++) {
-      dots.current.push(new Dot(x, y));
-    }
-  };
-
-  /**
-   * Get device orientation for tilt
-   */
+  // State for bubbles and dots
+  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [dots, setDots] = useState<Dot[]>([]);
+  
+  // Use refs to avoid dependency issues
+  const animationLoadedRef = useRef(onAnimationLoaded);
+  const hasNotifiedLoaded = useRef(false);
+  const animationIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  
+  // Update ref when prop changes
   useEffect(() => {
-    const simulateTilt = () => {
-      const time = Date.now() / 1000;
-      // Create a gentle oscillating tilt effect
-      tilt.current = { 
-        x: Math.sin(time * 0.5) * 0.5, 
-        y: Math.cos(time * 0.3) * 0.5 
-      };
-      setTimeout(simulateTilt, 16);
+    animationLoadedRef.current = onAnimationLoaded;
+  }, [onAnimationLoaded]);
+  
+  // Generate a unique ID
+  const generateId = useCallback(() => {
+    return Math.random().toString(36).substring(2, 9);
+  }, []);
+  
+  // Create a new bubble
+  const createBubble = useCallback((x?: number, y?: number, size?: number): Bubble => {
+    const bubbleSize = size || Math.random() * (BUBBLE_MAX_SIZE - BUBBLE_MIN_SIZE) + BUBBLE_MIN_SIZE;
+    const { width, height } = containerDims;
+    const posX = x !== undefined ? x : Math.random() * width;
+    const posY = y !== undefined ? y : Math.random() * height;
+    
+    return {
+      id: generateId(),
+      x: new Animated.Value(posX),
+      y: new Animated.Value(posY),
+      size: bubbleSize,
+      opacity: new Animated.Value(0.7 + Math.random() * 0.3),
+      scale: new Animated.Value(0.8 + Math.random() * 0.4),
+      color: 'white',
+      highlight: Math.random() > 0.5
     };
-    simulateTilt();
-    return () => {
-      // No subscriptions to clean up
-    };
+  }, [containerDims, generateId]);
+  
+  // Get current position of an animated value
+  // Helper to synchronously read the current numeric value of an Animated.Value
+  // Using the undocumented __getValue() is OK for internal calculations here.
+  // We avoid addListener, which was always returning 0 immediately and caused
+  // positions to collapse to the origin.
+  const getAnimatedValue = useCallback((animValue: Animated.Value): number => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/ban-ts-comment
+    // @ts-ignore – __getValue is private but safe in JS runtime
+    return (animValue as any).__getValue() as number;
   }, []);
 
-  useEffect(() => {
-    // Notify parent when animation is loaded
-    onAnimationLoaded && onAnimationLoaded();
-  }, [onAnimationLoaded]);
+  // Create a burst of dots at a specific position
+  const createDotBurst = useCallback((x: number, y: number) => {
+    const newDots: Dot[] = [];
+    
+    for (let i = 0; i < DOT_COUNT; i++) {
+      const dot: Dot = {
+        id: generateId(),
+        x: new Animated.Value(x),
+        y: new Animated.Value(y),
+        size: DOT_SIZE * (0.5 + Math.random() * 0.5),
+        opacity: new Animated.Value(1),
+        scale: new Animated.Value(1)
+      };
+      
+      // Animate the dot
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 100 + Math.random() * 100;
+      
+      Animated.parallel([
+        Animated.timing(dot.x, {
+          toValue: x + Math.cos(angle) * distance,
+          duration: DOT_LIFETIME,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.ease)
+        }),
+        Animated.timing(dot.y, {
+          toValue: y + Math.sin(angle) * distance,
+          duration: DOT_LIFETIME,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.ease)
+        }),
+        Animated.timing(dot.opacity, {
+          toValue: 0,
+          duration: DOT_LIFETIME,
+          useNativeDriver: true
+        }),
+        Animated.timing(dot.scale, {
+          toValue: 0.2,
+          duration: DOT_LIFETIME,
+          useNativeDriver: true
+        })
+      ]).start(() => {
+        // Remove the dot after animation completes
+        setDots(prevDots => prevDots.filter(d => d.id !== dot.id));
+      });
+      
+      newDots.push(dot);
+    }
+    
+    setDots(prevDots => [...prevDots, ...newDots]);
+  }, [generateId]);
+  
+  // Create a burst effect when a bubble pops
+  const createBurstEffect = useCallback((x: number, y: number, size: number, color: string = 'white') => {
+    const burstDots: Dot[] = [];
+    
+    for (let i = 0; i < BURST_PARTICLE_COUNT; i++) {
+      const dot: Dot = {
+        id: generateId(),
+        x: new Animated.Value(x),
+        y: new Animated.Value(y),
+        size: size * 0.2 * (0.5 + Math.random() * 0.5),
+        opacity: new Animated.Value(1),
+        scale: new Animated.Value(1)
+      };
+      
+      // Animate the burst particle
+      const angle = (i / BURST_PARTICLE_COUNT) * Math.PI * 2;
+      const distance = size * (1.5 + Math.random());
+      
+      Animated.parallel([
+        Animated.timing(dot.x, {
+          toValue: x + Math.cos(angle) * distance,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic)
+        }),
+        Animated.timing(dot.y, {
+          toValue: y + Math.sin(angle) * distance,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic)
+        }),
+        Animated.timing(dot.opacity, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: true
+        }),
+        Animated.timing(dot.scale, {
+          toValue: 0.1,
+          duration: 800,
+          useNativeDriver: true
+        })
+      ]).start(() => {
+        setDots(prevDots => prevDots.filter(d => d.id !== dot.id));
+      });
+      
+      burstDots.push(dot);
+    }
+    
+    setDots(prevDots => [...prevDots, ...burstDots]);
+  }, [generateId]);
 
+  // Split a bubble into smaller bubbles
+  const splitBubble = useCallback((bubble: Bubble, x: number, y: number) => {
+    // Create burst effect at the bubble's position
+    createBurstEffect(x, y, bubble.size);
+    
+    // Remove the original bubble with a fade out effect
+    Animated.timing(bubble.opacity, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true
+    }).start(() => {
+      setBubbles(prevBubbles => prevBubbles.filter(b => b.id !== bubble.id));
+      
+      // Create smaller bubbles
+      const count = Math.floor(Math.random() * (CHILD_COUNT_MAX - CHILD_COUNT_MIN + 1)) + CHILD_COUNT_MIN;
+      const newBubbles: Bubble[] = [];
+      
+      for (let i = 0; i < count; i++) {
+        const childSize = bubble.size * 0.6 * (0.5 + Math.random() * 0.5);
+        const newBubble = createBubble(x, y, childSize);
+        
+        // Animate the new bubble outward
+        const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5; // More evenly distributed
+        const distance = 100 + Math.random() * 150;
+        
+        Animated.timing(newBubble.x, {
+          toValue: x + Math.cos(angle) * distance,
+          duration: 1000,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.back(1.5))
+        }).start();
+        
+        Animated.timing(newBubble.y, {
+          toValue: y + Math.sin(angle) * distance,
+          duration: 1000,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.back(1.5))
+        }).start();
+        
+        newBubbles.push(newBubble);
+      }
+      
+      setBubbles(prevBubbles => [...prevBubbles, ...newBubbles]);
+    });
+  }, [createBubble, createBurstEffect]);
+  
+  // Handle touch on the animation area
+  const handleTouch = useCallback((event: any) => {
+    const { locationX: x, locationY: y } = event.nativeEvent;
+    
+    // Check if a bubble was touched
+    const touchedBubble = bubbles.find(bubble => {
+      const bubbleX = getAnimatedValue(bubble.x);
+      const bubbleY = getAnimatedValue(bubble.y);
+      const dx = x - bubbleX;
+      const dy = y - bubbleY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      return distance <= bubble.size / 2;
+    });
+    
+    if (touchedBubble) {
+      splitBubble(touchedBubble, x, y);
+    } else {
+      createDotBurst(x, y);
+    }
+  }, [bubbles, splitBubble, createDotBurst, getAnimatedValue]);
+  
+  // Animation function for bubbles - smoother floating motion
+  const animateBubbles = useCallback(() => {
+    bubbles.forEach(bubble => {
+      // Get current position
+      const currentX = getAnimatedValue(bubble.x);
+      const currentY = getAnimatedValue(bubble.y);
+      
+      // Calculate new position with natural floating movement
+      // Add some sine wave motion for more natural floating
+      const time = Date.now() / 1000;
+      const uniqueOffset = parseInt(bubble.id.substring(0, 2), 36) / 36; // Use ID for unique wave pattern
+      const sineOffset = Math.sin((time + uniqueOffset) * 2) * 1.5;
+      
+      const newX = currentX + sineOffset + (Math.random() * 2 - 1) * BUBBLE_SPEED * 2;
+      const newY = currentY - BUBBLE_SPEED * (2 + Math.random()); // Varying upward speed
+      
+      // Wrap around if bubble goes off screen
+      const { width, height } = containerDims;
+      const wrappedY = newY < -bubble.size ? height + bubble.size : newY;
+      const wrappedX = newX < -bubble.size ? width + bubble.size : 
+                      newX > width + bubble.size ? -bubble.size : newX;
+      
+      // Animate to new position with shorter duration for smoother movement
+      Animated.timing(bubble.y, {
+        toValue: wrappedY,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.linear
+      }).start();
+      
+      Animated.timing(bubble.x, {
+        toValue: wrappedX,
+        duration: 200,
+        useNativeDriver: true,
+        easing: Easing.linear
+      }).start();
+      
+      // Only start new opacity/scale animations if not already animating
+      // This prevents too many animations from stacking up
+      if (Math.random() < 0.05) { // Occasionally update the pulsing
+        // Animate opacity and scale for a pulsing effect
+        Animated.sequence([
+          Animated.timing(bubble.opacity, {
+            toValue: 0.6 + Math.random() * 0.4,
+            duration: 1500 + Math.random() * 1000,
+            useNativeDriver: true
+          }),
+          Animated.timing(bubble.opacity, {
+            toValue: 0.8 + Math.random() * 0.2,
+            duration: 1500 + Math.random() * 1000,
+            useNativeDriver: true
+          })
+        ]).start();
+        
+        Animated.sequence([
+          Animated.timing(bubble.scale, {
+            toValue: 0.8 + Math.random() * 0.3,
+            duration: 2000 + Math.random() * 1000,
+            useNativeDriver: true
+          }),
+          Animated.timing(bubble.scale, {
+            toValue: 1.0 + Math.random() * 0.2,
+            duration: 2000 + Math.random() * 1000,
+            useNativeDriver: true
+          })
+        ]).start();
+      }
+    });
+  }, [bubbles, containerDims, getAnimatedValue]);
+
+  // Initialize animation
+  useEffect(() => {
+    // Create initial bubbles whenever container size changes (once on mount as well)
+    const initialBubbles: Bubble[] = [];
+    
+    for (let i = 0; i < INITIAL_BUBBLE_COUNT; i++) {
+      initialBubbles.push(createBubble());
+    }
+    
+    setBubbles(initialBubbles);
+    
+    // Notify that animation is loaded (only once)
+    if (!hasNotifiedLoaded.current && animationLoadedRef.current) {
+      animationLoadedRef.current();
+      hasNotifiedLoaded.current = true;
+    }
+    
+    return () => {
+      // Cleanup
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+      }
+    };
+  }, [createBubble, containerDims]);
+  
+  // Set up animation interval separately to avoid dependency issues
+  useEffect(() => {
+    // Use a shorter interval for smoother animation
+    animationIntervalRef.current = setInterval(animateBubbles, BUBBLE_FLOAT_INTERVAL);
+    
+    return () => {
+      if (animationIntervalRef.current) {
+        clearInterval(animationIntervalRef.current);
+        animationIntervalRef.current = null;
+      }
+    };
+  }, [animateBubbles]);
+  
   return (
-    <View style={styles.container}>
-      <Canvas
-        ref={canvasRef}
-        style={styles.canvas}
-        onTouchStart={handleTouch}
-        onContext2D={(ctx: CanvasRenderingContext2D) => init(ctx)}
-      />
-    </View>
+    <TouchableWithoutFeedback onPress={handleTouch}>
+      <View
+        style={[styles.container, { width: containerDims.width, height: containerDims.height }]}
+        onLayout={event => {
+          const { width: w, height: h } = event.nativeEvent.layout;
+          setContainerDims({ width: w, height: h });
+        }}>
+        {/* Render bubbles */}
+        {bubbles.map(bubble => (
+          <Animated.View 
+            key={bubble.id}
+            style={[
+              styles.bubble,
+              {
+                width: bubble.size,
+                height: bubble.size,
+                borderRadius: bubble.size / 2,
+                backgroundColor: bubble.color,
+                transform: [
+                  { translateX: Animated.subtract(bubble.x, bubble.size / 2) },
+                  { translateY: Animated.subtract(bubble.y, bubble.size / 2) },
+                  { scale: bubble.scale }
+                ],
+                opacity: bubble.opacity
+              }
+            ]}
+          >
+            {bubble.highlight && (
+              <View style={[
+                styles.highlight,
+                {
+                  width: bubble.size * 0.4,
+                  height: bubble.size * 0.4,
+                  borderRadius: bubble.size * 0.2,
+                  top: bubble.size * 0.15,
+                  left: bubble.size * 0.15
+                }
+              ]} />
+            )}
+          </Animated.View>
+        ))}
+        
+        {/* Render dots */}
+        {dots.map(dot => (
+          <Animated.View 
+            key={dot.id}
+            style={[
+              styles.dot,
+              {
+                width: dot.size,
+                height: dot.size,
+                borderRadius: dot.size / 2,
+                transform: [
+                  { translateX: Animated.subtract(dot.x, dot.size / 2) },
+                  { translateY: Animated.subtract(dot.y, dot.size / 2) },
+                  { scale: dot.scale }
+                ],
+                opacity: dot.opacity
+              }
+            ]}
+          />
+        ))}
+      </View>
+    </TouchableWithoutFeedback>
   );
-}
+});
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000000' },
-  canvas: { flex: 1 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000000',
+    overflow: 'hidden'
+  },
+  bubble: {
+    position: 'absolute',
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  highlight: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.8)'
+  },
+  dot: {
+    position: 'absolute',
+    backgroundColor: 'white'
+  }
 });
+
+// Add display name for the component
+SpaceBubblesAnimation.displayName = 'SpaceBubblesAnimation';
 
 export default SpaceBubblesAnimation;
