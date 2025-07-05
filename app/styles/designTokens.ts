@@ -3,6 +3,7 @@
  * Based on the wellness/meditation app design system
  */
 
+// Design tokens object with all design system values
 export const designTokens = {
   colors: {
     // Primary Colors
@@ -112,3 +113,8 @@ export const designTokens = {
 } as const;
 
 export type DesignTokens = typeof designTokens;
+
+// Default export for Expo Router compatibility
+export default function DesignTokensExport() {
+  return null; // This component doesn't render anything
+}
