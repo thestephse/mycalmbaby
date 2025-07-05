@@ -11,12 +11,12 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    const startAudio = async () => {
+    const initAudio = async () => {
+      // Only initialize the AudioManager, don't start white noise
       await AudioManager.initialize();
-      await AudioManager.startWhiteNoise();
     };
 
-    startAudio();
+    initAudio();
 
     return () => {
       AudioManager.cleanup();

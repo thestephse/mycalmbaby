@@ -48,8 +48,15 @@ export default function MainMenuScreen() {
         const savedTimer = await AsyncStorage.getItem('sleepTimer');
         const savedPacks = await AsyncStorage.getItem('purchasedPacks');
 
-        if (savedWhiteNoise !== null) {
-          setWhiteNoiseEnabled(savedWhiteNoise === 'true');
+        // Ensure white noise playback matches saved state
+        const shouldPlayWhiteNoise = savedWhiteNoise === 'true';
+        setWhiteNoiseEnabled(shouldPlayWhiteNoise);
+        
+        // Explicitly set audio state to match the toggle
+        if (shouldPlayWhiteNoise) {
+          AudioManager.play();
+        } else {
+          AudioManager.stop();
         }
         if (savedTimer) {
           setSleepTimer(parseInt(savedTimer) as SleepTimer);

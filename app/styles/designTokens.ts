@@ -115,6 +115,6 @@ export const designTokens = {
 export type DesignTokens = typeof designTokens;
 
 // Default export for Expo Router compatibility
-export default function DesignTokensExport() {
-  return null; // This component doesn't render anything
+export default function DesignTokensComponent() {
+  return null;  // Empty component for Expo Router compatibility
 }
