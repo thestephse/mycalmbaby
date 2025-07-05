@@ -6,6 +6,7 @@ import {
   PanResponder,
   Animated,
   BackHandler,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,6 +15,11 @@ import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import { designTokens } from './styles/designTokens';
+import AnimationManager, { AnimationConfig, AnimationElement } from './utils/AnimationManager';
+
+// Default animation components (fallbacks)
+import BasicShapesAnimation from './animations/basic-shapes/animation';
+import NaturePatternsAnimation from './animations/nature-patterns/animation';
 
 
 const { width, height } = Dimensions.get('window');
@@ -30,7 +36,7 @@ interface TouchZone {
 
 // Dynamic corner size based on screen dimensions (25% of smaller dimension, min 120px)
 const CORNER_SIZE = Math.max(120, Math.min(width, height) * 0.25);
-const SEQUENCE_TIMEOUT = 3000; // 3 seconds to complete sequence
+// Default sequence timeout (overridden by AnimationManager)
 
 export default function AnimationScreen() {
   const [unlockSequence, setUnlockSequence] = useState<Corner[]>([]);
@@ -39,6 +45,8 @@ export default function AnimationScreen() {
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
   const [sleepTimer, setSleepTimer] = useState<number>(30);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [currentAnimation, setCurrentAnimation] = useState<AnimationConfig | undefined>();
+  const [animationElements, setAnimationElements] = useState<AnimationElement[]>([]);
   
   // Reference to the sound object for white noise
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -121,6 +129,18 @@ export default function AnimationScreen() {
         if (savedTimer) {
           const timer = parseInt(savedTimer);
           setSleepTimer(timer);
+        }
+        
+        // Load the selected animation
+        const animationManager = AnimationManager.getInstance();
+        await animationManager.initialize();
+        const selectedAnimation = animationManager.getSelectedAnimation();
+        if (selectedAnimation) {
+          console.log('Loaded animation:', selectedAnimation.name);
+          setCurrentAnimation(selectedAnimation);
+          setAnimationElements(selectedAnimation.elements || []);
+        } else {
+          console.log('No animation selected, using default');
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -372,16 +392,15 @@ export default function AnimationScreen() {
       // Show timeout indicator
       setWrongSequenceIndicator(true);
       setTimeout(() => setWrongSequenceIndicator(false), 1000);
-    }, SEQUENCE_TIMEOUT);
+    }, 3000); // Default timeout
   };
-
+  
+  // Create pan responder for touch handling
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => false,
     onPanResponderGrant: (evt) => {
-      // Use pageX/pageY for absolute screen coordinates
       const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
-      // Try both coordinate systems for better compatibility
       const x = pageX || locationX || 0;
       const y = pageY || locationY || 0;
       console.log(`Touch detected at: (${x}, ${y}) - Screen: ${width}x${height} - Corner size: ${CORNER_SIZE}`);
@@ -391,76 +410,48 @@ export default function AnimationScreen() {
     onPanResponderRelease: () => {},
   });
 
-  const rotation = rotationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-  });
+  const renderAnimationElements = () => {
+    // If no animation is selected or loaded, show a loading indicator
+    if (!currentAnimation) {
+      return (
+        <View style={styles.animationContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primary} />
+        </View>
+      );
+    }
 
-  const opacity = animationValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 1],
-  });
+    // Determine which animation component to use based on the selected animation
+    let AnimationComponent;
+    
+    // Use the animation ID to select the appropriate component
+    switch (currentAnimation.id) {
+      case 'basic-shapes':
+        AnimationComponent = BasicShapesAnimation;
+        break;
+      case 'nature-patterns':
+        AnimationComponent = NaturePatternsAnimation;
+        break;
+      default:
+        // If no matching animation is found, use BasicShapesAnimation as fallback
+        AnimationComponent = BasicShapesAnimation;
+    }
+
+    // Render the selected animation component with all necessary props
+    return (
+      <AnimationComponent
+        animationValue={animationValue}
+        rotationValue={rotationValue}
+        scaleValue={scaleValue}
+        elements={animationElements}
+        styles={styles}
+      />
+    );
+  };
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
       {/* Main Animation Elements */}
-      <View style={styles.animationContainer}>
-        {/* Circle 1 */}
-        <Animated.View
-          style={[
-            styles.circle,
-            styles.circle1,
-            {
-              opacity,
-              transform: [{ rotate: rotation }, { scale: scaleValue }],
-            },
-          ]}
-        />
-        
-        {/* Circle 2 */}
-        <Animated.View
-          style={[
-            styles.circle,
-            styles.circle2,
-            {
-              opacity: animationValue,
-              transform: [{ rotate: rotation }, { scale: scaleValue }],
-            },
-          ]}
-        />
-        
-        {/* Square 1 */}
-        <Animated.View
-          style={[
-            styles.square,
-            styles.square1,
-            {
-              opacity,
-              transform: [
-                { rotate: rotation },
-                { scale: scaleValue },
-                { rotateY: rotation },
-              ],
-            },
-          ]}
-        />
-        
-        {/* Square 2 */}
-        <Animated.View
-          style={[
-            styles.square,
-            styles.square2,
-            {
-              opacity: animationValue,
-              transform: [
-                { rotate: rotation },
-                { scale: scaleValue },
-                { rotateX: rotation },
-              ],
-            },
-          ]}
-        />
-      </View>
+      {renderAnimationElements()}
 
       {/* Sequence entry indicator dots - only show after first corner press */}
       {currentSequence.length > 0 && (
@@ -479,29 +470,12 @@ export default function AnimationScreen() {
       )}
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: designTokens.colors.aliceBlue,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: designTokens.spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginBottom: designTokens.spacing.md,
-  },
-  logoImage: {
-    width: 40,
-    height: 40,
-    marginRight: designTokens.spacing.sm,
-  },
-  title: {
-    fontSize: designTokens.typography.sizes.lg,
-    fontWeight: designTokens.typography.weights.semibold,
-    color: designTokens.colors.charcoal,
   },
   dotsContainer: {
     position: 'absolute',
@@ -532,34 +506,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    position: 'relative',
   },
   circle: {
-    position: 'absolute',
-    borderWidth: 4,
-    borderColor: designTokens.colors.charcoal,
     borderRadius: designTokens.borderRadius.full,
   },
-  circle1: {
-    width: 120,
-    height: 120,
-  },
-  circle2: {
-    width: 80,
-    height: 80,
-  },
   square: {
-    position: 'absolute',
     backgroundColor: designTokens.colors.darkGray,
   },
-  square1: {
-    width: 60,
-    height: 60,
-    top: -150,
-  },
-  square2: {
-    width: 40,
-    height: 40,
-    top: 150,
+  triangle: {
+    // Triangle styles are applied inline since they're more complex
   },
   wrongSequenceIndicator: {
     position: 'absolute',

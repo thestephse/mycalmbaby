@@ -5,8 +5,11 @@ export interface AnimationConfig {
   name: string;
   description: string;
   thumbnail?: any;
+  thumbnailPath?: string;
   folder: string;
   elements?: AnimationElement[];
+  // Path to the animation code file (will be dynamically imported)
+  animationCodePath?: string;
 }
 
 export interface AnimationElement {
@@ -222,17 +225,17 @@ class AnimationManager {
 
   public async initialize(): Promise<void> {
     try {
-      // Load default animations
+      // Start with default animations as fallback
       this.animations = [...DEFAULT_ANIMATIONS];
+
+      // Scan for animations in the file system
+      await this.scanForAnimations();
 
       // Load selected animation from storage
       const savedAnimationId = await AsyncStorage.getItem('selectedAnimation');
       if (savedAnimationId) {
         this.selectedAnimationId = savedAnimationId;
       }
-
-      // TODO: In a future version, scan for custom animations in the file system
-      // await this.scanForCustomAnimations();
     } catch (error) {
       console.error('Failed to initialize AnimationManager:', error);
     }
@@ -258,11 +261,38 @@ class AnimationManager {
     }
   }
 
-  // This method would scan for custom animations in a future version
-  private async scanForCustomAnimations(): Promise<void> {
-    // This is a placeholder for future functionality
-    // In a real implementation, this would scan a specific directory
-    // for animation configuration files and load them dynamically
+  // Scan the animations folder for animation configurations
+  private async scanForAnimations(): Promise<void> {
+    try {
+      // For development and testing, we'll use the default animations
+      // In a production environment, we would implement dynamic loading from the app bundle
+      // or from a remote source
+      
+      // Load animations from the default configurations
+      // This ensures we always have animations available even if dynamic loading fails
+      const loadedAnimations = [...DEFAULT_ANIMATIONS];
+      
+      // Set the animation code paths for each animation
+      loadedAnimations.forEach(animation => {
+        // Set the path to the animation.tsx file in the animation's folder
+        animation.animationCodePath = `../animations/${animation.folder}/animation`;
+      });
+      
+      // Try to get the selected animation ID from storage
+      const savedAnimationId = await AsyncStorage.getItem('selectedAnimation');
+      if (savedAnimationId) {
+        this.selectedAnimationId = savedAnimationId;
+      }
+      
+      // Set the animations array
+      this.animations = loadedAnimations;
+      
+      console.log(`Loaded ${this.animations.length} animations, selected: ${this.selectedAnimationId}`);
+    } catch (error) {
+      console.error('Error scanning for animations:', error);
+      // Ensure we always have the default animations available
+      this.animations = [...DEFAULT_ANIMATIONS];
+    }
   }
 }
 

@@ -1,0 +1,44 @@
+{
+  "id": "nature-patterns",
+  "name": "Nature Patterns",
+  "description": "Organic shapes inspired by nature",
+  "thumbnail": "thumbnail.png",
+  "elements": [
+    {
+      "type": "circle",
+      "properties": {
+        "size": 100,
+        "color": "#4ADE80",
+        "animations": {
+          "scale": true,
+          "opacity": true,
+          "translateY": true
+        }
+      }
+    },
+    {
+      "type": "circle",
+      "properties": {
+        "size": 70,
+        "color": "#60A5FA",
+        "animations": {
+          "scale": true,
+          "opacity": true,
+          "translateX": true
+        }
+      }
+    },
+    {
+      "type": "triangle",
+      "properties": {
+        "size": 80,
+        "color": "#F472B6",
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    }
+  ]
+}

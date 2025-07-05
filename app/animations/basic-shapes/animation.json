@@ -1,0 +1,56 @@
+{
+  "id": "basic-shapes",
+  "name": "Basic Shapes",
+  "description": "Simple geometric shapes with soothing animations",
+  "thumbnail": "thumbnail.png",
+  "elements": [
+    {
+      "type": "circle",
+      "properties": {
+        "size": 120,
+        "color": "#3B82F6",
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    },
+    {
+      "type": "circle",
+      "properties": {
+        "size": 80,
+        "color": "#10B981",
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    },
+    {
+      "type": "square",
+      "properties": {
+        "size": 60,
+        "color": "#F59E0B",
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    },
+    {
+      "type": "square",
+      "properties": {
+        "size": 40,
+        "color": "#EF4444",
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    }
+  ]
+}

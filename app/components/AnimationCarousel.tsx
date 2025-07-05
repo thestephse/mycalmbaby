@@ -121,7 +121,11 @@ const AnimationCarousel: React.FC<AnimationCarouselProps> = ({
             },
           ]}
         >
-          <Image source={item.thumbnail} style={styles.thumbnail} />
+          <Image 
+            source={item.thumbnailPath ? { uri: item.thumbnailPath } : item.thumbnail} 
+            style={styles.thumbnail} 
+            resizeMode="cover"
+          />
           <View style={styles.cardContent}>
             <Text style={styles.cardTitle}>{item.name}</Text>
             <Text style={styles.cardDescription} numberOfLines={2}>
