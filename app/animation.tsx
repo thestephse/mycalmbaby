@@ -42,6 +42,12 @@ export default function AnimationScreen() {
   const [sleepTimer, setSleepTimer] = useState<number>(30);
   const [isPlaying, setIsPlaying] = useState(false);
   
+  // Reference to the sound object for white noise
+  const soundRef = useRef<Audio.Sound | null>(null);
+  
+  // Reference to the fadeOutAndExit function to use it outside useEffect
+  const fadeOutAndExitRef = useRef<() => void>(() => {});
+  
   const sequenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationValue = useRef(new Animated.Value(0)).current;
   const rotationValue = useRef(new Animated.Value(0)).current;
@@ -172,6 +178,37 @@ export default function AnimationScreen() {
       animationRefs.current.scale = scaleAnimation;
     };
 
+    // Fade out animation and exit to main menu
+    const fadeOutAndExit = async () => {
+      try {
+        // Fade out animation
+        Animated.timing(animationValue, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }).start(() => {
+          router.replace('/main-menu');
+        });
+      } catch (error) {
+        console.error('Fade out error:', error);
+        router.replace('/main-menu');
+      }
+    };
+    
+    // Store the function in ref so it can be accessed outside useEffect
+    fadeOutAndExitRef.current = fadeOutAndExit;
+    
+    // Start sleep timer to automatically return to main menu after specified minutes
+    const startSleepTimer = (minutes: number) => {
+      if (minutes > 0) {
+        console.log(`Sleep timer started: ${minutes} minutes`);
+        setTimeout(() => {
+          console.log('Sleep timer expired, returning to main menu');
+          fadeOutAndExit();
+        }, minutes * 60 * 1000);
+      }
+    };
+
     const cleanup = async () => {
       try {
         deactivateKeepAwake();
@@ -188,8 +225,10 @@ export default function AnimationScreen() {
         }
         
         // Clean up audio with fade-out
-        
-        
+        if (soundRef.current) {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+        }
         if (sequenceTimeoutRef.current) {
           clearTimeout(sequenceTimeoutRef.current);
         }
@@ -207,7 +246,16 @@ export default function AnimationScreen() {
       await initializeScreen();
       await loadSettings();
       setupAnimations();
-      loadAndPlayWhiteNoise();
+      
+      // Load and play white noise if enabled
+      if (whiteNoiseEnabled) {
+        loadAndPlayWhiteNoise();
+      }
+      
+      // Start sleep timer if enabled
+      if (sleepTimer > 0) {
+        startSleepTimer(sleepTimer);
+      }
     };
     
     init();
@@ -222,7 +270,7 @@ export default function AnimationScreen() {
       cleanup();
       backHandler.remove();
     };
-  }, [animationValue, isPlaying, rotationValue, scaleValue]);  // Adding required dependencies
+  }, [animationValue, isPlaying, rotationValue, scaleValue, sleepTimer, whiteNoiseEnabled]);  // Adding required dependencies
 
   // initializeScreen moved inside useEffect
 
@@ -230,35 +278,36 @@ export default function AnimationScreen() {
 
   // loadSettings moved inside useEffect
 
-  
-
-  // Used when sleep timer is activated via UI
-  const startSleepTimer = (minutes: number) => {
-    if (sleepTimer > 0) {
-      setTimeout(() => {
-        fadeOutAndExit();
-      }, minutes * 60 * 1000);
-    }
-  };
-
-  const fadeOutAndExit = async () => {
+  // Load and play white noise
+  const loadAndPlayWhiteNoise = async () => {
     try {
+      // Unload any existing sound first
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+      }
       
+      // Load the white noise sound
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/sounds/white-noise.mp3'),
+        { isLooping: true, volume: 0.7 },
+        status => {
+          if (status.isLoaded) {
+            setIsPlaying(status.isPlaying);
+          }
+        }
+      );
       
-      // Fade out animation
-      Animated.timing(animationValue, {
-        toValue: 0,
-        duration: 2000,
-        useNativeDriver: true,
-      }).start(() => {
-        router.replace('/main-menu');
-      });
+      soundRef.current = sound;
+      await sound.playAsync();
     } catch (error) {
-      console.error('Fade out error:', error);
-      
-      router.replace('/main-menu');
+      console.error('Failed to load and play white noise:', error);
     }
   };
+
+
+
+
 
   // startAnimations moved inside useEffect
 
@@ -299,7 +348,7 @@ export default function AnimationScreen() {
       
       if (isCorrect) {
         // Correct sequence - unlock and stop everything
-        fadeOutAndExit();
+        fadeOutAndExitRef.current();
         return;
       } else {
         // Wrong sequence - show indicator and reset
