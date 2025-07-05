@@ -8,6 +8,10 @@ interface AnimationProps {
   scaleValue: Animated.Value;
   elements: AnimationElement[];
   styles: any;
+  // Additional props that might be passed from animation.tsx
+  width?: number;
+  height?: number;
+  onAnimationLoaded?: () => void;
 }
 
 /**
@@ -21,7 +25,16 @@ export default function BasicShapesAnimation({
   scaleValue,
   elements,
   styles,
+  width,
+  height,
+  onAnimationLoaded,
 }: AnimationProps) {
+  // Notify parent when animation is loaded
+  React.useEffect(() => {
+    if (onAnimationLoaded) {
+      onAnimationLoaded();
+    }
+  }, [onAnimationLoaded]);
   const rotation = rotationValue.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],

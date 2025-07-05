@@ -1,14 +1,29 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
 
 interface AnimationProps {
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   onAnimationLoaded?: () => void;
+  // Props from basic-shapes animation
+  animationValue?: any;
+  rotationValue?: any;
+  scaleValue?: any;
+  elements?: any[];
+  styles?: any;
 }
 
 // Nature-inspired animation component
-const NaturePatternsAnimation: React.FC<AnimationProps> = ({ width, height, onAnimationLoaded }) => {
+const NaturePatternsAnimation: React.FC<AnimationProps> = ({ 
+  width = Dimensions.get('window').width, 
+  height = Dimensions.get('window').height, 
+  onAnimationLoaded,
+  animationValue,
+  rotationValue,
+  scaleValue,
+  elements,
+  styles
+}) => {
   // Animation values
   const leaf1Animation = useRef(new Animated.Value(0)).current;
   const leaf2Animation = useRef(new Animated.Value(0)).current;

@@ -1,7 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Platform, GestureResponderEvent } from 'react-native';
+import { View, StyleSheet, Dimensions, GestureResponderEvent } from 'react-native';
 import Canvas, { CanvasRenderingContext2D } from 'react-native-canvas';
-import { Accelerometer } from 'expo-sensors';
 import type { AnimationElement } from '../../utils/AnimationManager';
 
 interface AnimationProps {
@@ -19,7 +18,6 @@ const CHILD_COUNT_MIN = 2;
 const CHILD_COUNT_MAX = 5;
 const BURST_SPEED = 100;
 const BUBBLE_SPEED = 12;
-const MAX_HOR_SPEED = 8;
 const DOT_COUNT = 12;
 const DOT_RAD = 8;
 const DOT_BURST_DIST = 40;
@@ -114,12 +112,12 @@ class Dot {
   }
 }
 
-const SpaceBubblesAnimation: React.FC<AnimationProps> = ({ 
+function SpaceBubblesAnimation({ 
   width = Dimensions.get('window').width, 
   height = Dimensions.get('window').height,
   elements = [],
   onAnimationLoaded
-}) => {
+}: AnimationProps) {
   const canvasRef = useRef<Canvas | null>(null);
   const tilt = useRef<{ x: number; y: number }>({ x: 0, y: -1 });
   const bubbles = useRef<Bubble[]>([]);
@@ -200,29 +198,19 @@ const SpaceBubblesAnimation: React.FC<AnimationProps> = ({
    * Get device orientation for tilt
    */
   useEffect(() => {
-    let subscription: { remove: () => void } | undefined;
-    if (Platform.OS === 'web') return;
-    
-    // Use the imported Accelerometer
-    Accelerometer.setUpdateInterval(16);
-    subscription = Accelerometer.addListener(({ x, y, z }: { x: number; y: number; z: number }) => {
-      const pitch = Math.atan2(x, Math.hypot(y, z));
-      const roll = Math.atan2(y, Math.hypot(x, z));
-      const pd = (pitch * 180) / Math.PI;
-      const rd = (roll * 180) / Math.PI;
-      if (Math.abs(pd) < 10 && Math.abs(rd) < 10) {
-        tilt.current = { x: 0, y: -1 };
-      } else {
-        const dx = Math.sin(roll);
-        const maxH = MAX_HOR_SPEED / BUBBLE_SPEED;
-        tilt.current = {
-          x: Math.max(Math.min(dx, maxH), -maxH),
-          y: -Math.sin(pitch),
-        };
-      }
-    });
-    
-    return () => subscription && subscription.remove();
+    const simulateTilt = () => {
+      const time = Date.now() / 1000;
+      // Create a gentle oscillating tilt effect
+      tilt.current = { 
+        x: Math.sin(time * 0.5) * 0.5, 
+        y: Math.cos(time * 0.3) * 0.5 
+      };
+      setTimeout(simulateTilt, 16);
+    };
+    simulateTilt();
+    return () => {
+      // No subscriptions to clean up
+    };
   }, []);
 
   useEffect(() => {

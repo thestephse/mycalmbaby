@@ -2,5 +2,46 @@
   "id": "basic-shapes",
   "name": "Basic Shapes",
   "description": "Simple geometric shapes with soothing animations",
-  "folder": "basic-shapes"
+  "folder": "basic-shapes",
+  "elements": [
+    {
+      "type": "circle",
+      "properties": {
+        "size": 100,
+        "color": "#3498db",
+        "position": { "x": 0.3, "y": 0.3 },
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": true
+        }
+      }
+    },
+    {
+      "type": "square",
+      "properties": {
+        "size": 80,
+        "color": "#e74c3c",
+        "position": { "x": 0.7, "y": 0.3 },
+        "animations": {
+          "rotate": true,
+          "scale": false,
+          "opacity": true
+        }
+      }
+    },
+    {
+      "type": "triangle",
+      "properties": {
+        "size": 90,
+        "color": "#2ecc71",
+        "position": { "x": 0.5, "y": 0.7 },
+        "animations": {
+          "rotate": true,
+          "scale": true,
+          "opacity": false
+        }
+      }
+    }
+  ]
 }

@@ -7,6 +7,7 @@ import {
   Animated,
   BackHandler,
   ActivityIndicator,
+  Text,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -20,6 +21,8 @@ import AnimationManager, { AnimationConfig, AnimationElement } from './utils/Ani
 // Default animation components (fallbacks)
 import BasicShapesAnimation from './animations/basic-shapes/animation';
 import NaturePatternsAnimation from './animations/nature-patterns/animation';
+import SpaceJourneyAnimation from './animations/space-journey/animation';
+import SpaceBubblesAnimation from './animations/space-bubbles/animation';
 
 
 const { width, height } = Dimensions.get('window');
@@ -424,28 +427,78 @@ export default function AnimationScreen() {
     let AnimationComponent;
     
     // Use the animation ID to select the appropriate component
+    console.log('Current animation ID:', currentAnimation.id);
     switch (currentAnimation.id) {
       case 'basic-shapes':
+        console.log('Loading BasicShapesAnimation component');
         AnimationComponent = BasicShapesAnimation;
         break;
       case 'nature-patterns':
+        console.log('Loading NaturePatternsAnimation component');
         AnimationComponent = NaturePatternsAnimation;
+        break;
+      case 'space-journey':
+        console.log('Loading SpaceJourneyAnimation component');
+        AnimationComponent = SpaceJourneyAnimation;
+        break;
+      case 'space-bubbles':
+        console.log('Loading SpaceBubblesAnimation component');
+        AnimationComponent = SpaceBubblesAnimation;
         break;
       default:
         // If no matching animation is found, use BasicShapesAnimation as fallback
+        console.log('No matching animation found for ID:', currentAnimation.id);
         AnimationComponent = BasicShapesAnimation;
     }
+    
+    // Debug the component
+    console.log('AnimationComponent type:', typeof AnimationComponent);
+    console.log('AnimationComponent is undefined:', AnimationComponent === undefined);
 
-    // Render the selected animation component with all necessary props
-    return (
-      <AnimationComponent
-        animationValue={animationValue}
-        rotationValue={rotationValue}
-        scaleValue={scaleValue}
-        elements={animationElements}
-        styles={styles}
-      />
-    );
+    // Check if AnimationComponent is valid before rendering
+    if (!AnimationComponent) {
+      console.error('AnimationComponent is undefined or null');
+      return (
+        <View style={styles.animationContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primary} />
+          <View style={{ marginTop: 20 }}>
+            <Text style={{ textAlign: 'center', color: 'red' }}>
+              Error loading animation
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    try {
+      // Render the selected animation component with all necessary props
+      return (
+        <AnimationComponent
+          // Props for basic-shapes and nature-patterns
+          animationValue={animationValue}
+          rotationValue={rotationValue}
+          scaleValue={scaleValue}
+          elements={animationElements}
+          styles={styles}
+          // Props for space-bubbles and space-journey
+          width={width}
+          height={height}
+          onAnimationLoaded={() => console.log(`${currentAnimation.id} animation loaded`)}
+        />
+      );
+    } catch (error) {
+      console.error('Error rendering animation component:', error);
+      return (
+        <View style={styles.animationContainer}>
+          <ActivityIndicator size="large" color={designTokens.colors.primary} />
+          <View style={{ marginTop: 20 }}>
+            <Text style={{ textAlign: 'center', color: 'red' }}>
+              Error rendering animation
+            </Text>
+          </View>
+        </View>
+      );
+    }
   };
 
   return (
