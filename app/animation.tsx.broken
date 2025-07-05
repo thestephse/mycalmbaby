@@ -121,12 +121,6 @@ export default function AnimationScreen() {
     };
 
     const setupAnimations = async () => {
-      // Opacity animation
-      const opacityAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(animationValue, {
-            toValue: 1,
-            duration: 2000,
             useNativeDriver: true,
           }),
           Animated.timing(animationValue, {
@@ -211,7 +205,7 @@ export default function AnimationScreen() {
     const init = async () => {
       await initializeScreen();
       await loadSettings();
-      setupAnimations();
+      startAnimations();
     };
     
     init();
@@ -226,7 +220,7 @@ export default function AnimationScreen() {
       cleanup();
       backHandler.remove();
     };
-  }, [animationValue, isPlaying, rotationValue, scaleValue]);  // Adding required dependencies
+  }, []);  // No external dependencies needed as all functions are defined inside useEffect
 
   // initializeScreen moved inside useEffect
 
@@ -234,7 +228,6 @@ export default function AnimationScreen() {
 
   // loadSettings moved inside useEffect
 
-  // Used by the pan responder gesture handlers
   const loadAndPlayWhiteNoise = async () => {
     try {
       if (whiteNoiseEnabled) {
@@ -250,7 +243,8 @@ export default function AnimationScreen() {
     }
   };
 
-  // Used when sleep timer is activated via UI
+  // No longer needed as WhiteNoiseGenerator handles looping internally
+
   const startSleepTimer = (minutes: number) => {
     if (sleepTimer > 0) {
       setTimeout(() => {

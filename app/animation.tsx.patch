@@ -1,0 +1,31 @@
+--- animation.tsx
++++ animation.tsx
+@@ -13,7 +13,7 @@
+ import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+ import * as ScreenOrientation from 'expo-screen-orientation';
+ import * as NavigationBar from 'expo-navigation-bar';
+-import WhiteNoiseGenerator from './utils/WhiteNoiseGenerator';
++import AudioManager from './utils/AudioManager';
+ 
+ const { width, height } = Dimensions.get('window');
+ 
+@@ -121,7 +121,20 @@
+     };
+ 
+     const setupAnimations = async () => {
+-            useNativeDriver: true,
++      // Opacity animation
++      const opacityAnimation = Animated.loop(
++        Animated.sequence([
++          Animated.timing(animationValue, {
++            toValue: 1,
++            duration: 2000,
++            useNativeDriver: true,
++          }),
++          Animated.timing(animationValue, {
++            toValue: 0.8,
++            duration: 2000,
++            useNativeDriver: true,
++          }),
++        ])
++      );
