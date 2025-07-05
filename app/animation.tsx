@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  Text,
   StyleSheet,
   Dimensions,
   PanResponder,
   Animated,
   BackHandler,
-  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -226,8 +224,16 @@ export default function AnimationScreen() {
         
         // Clean up audio with fade-out
         if (soundRef.current) {
-          await soundRef.current.stopAsync();
-          await soundRef.current.unloadAsync();
+          try {
+            const status = await soundRef.current.getStatusAsync();
+            // Only stop and unload if the sound is loaded
+            if (status.isLoaded) {
+              await soundRef.current.stopAsync();
+              await soundRef.current.unloadAsync();
+            }
+          } catch (audioError) {
+            console.log('Audio cleanup error:', audioError);
+          }
         }
         if (sequenceTimeoutRef.current) {
           clearTimeout(sequenceTimeoutRef.current);
@@ -289,7 +295,7 @@ export default function AnimationScreen() {
       
       // Load the white noise sound
       const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/white-noise.mp3'),
+        require('../assets/audio/white-noise.mp3'),
         { isLooping: true, volume: 0.7 },
         status => {
           if (status.isLoaded) {
@@ -397,14 +403,6 @@ export default function AnimationScreen() {
 
   return (
     <View style={styles.container} {...panResponder.panHandlers}>
-      <View style={styles.header}>
-        <Image 
-          source={require('../assets/images/icons/splash-icon-dark.png')} 
-          style={styles.logoImage} 
-          resizeMode="contain"
-        />
-        <Text style={styles.title}>My Calm Baby</Text>
-      </View>
       {/* Main Animation Elements */}
       <View style={styles.animationContainer}>
         {/* Circle 1 */}

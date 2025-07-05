@@ -19,6 +19,8 @@ import {
   Toggle,
   SectionHeader,
 } from './components/UIComponents';
+import AnimationCarousel from './components/AnimationCarousel';
+import AnimationManager, { AnimationConfig } from './utils/AnimationManager';
 
 type SleepTimer = 15 | 30 | 60;
 
@@ -27,6 +29,8 @@ type SleepTimer = 15 | 30 | 60;
 export default function MainMenuScreen() {
   const [sleepTimer, setSleepTimer] = useState<SleepTimer>(30);
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
+  const [animations, setAnimations] = useState<AnimationConfig[]>([]);
+  const [selectedAnimationId, setSelectedAnimationId] = useState<string>('basic-shapes');
 
 
   useEffect(() => {
@@ -47,6 +51,15 @@ export default function MainMenuScreen() {
         if (savedTimer) {
           setSleepTimer(parseInt(savedTimer) as SleepTimer);
         }
+
+        // Initialize animation manager
+        const animationManager = AnimationManager.getInstance();
+        await animationManager.initialize();
+        setAnimations(animationManager.getAnimations());
+        const selectedAnimation = animationManager.getSelectedAnimation();
+        if (selectedAnimation) {
+          setSelectedAnimationId(selectedAnimation.id);
+        }
       } catch (error) {
         console.error('Failed to load settings:', error);
       }
@@ -57,6 +70,12 @@ export default function MainMenuScreen() {
 
   const handlePlay = () => {
     router.push('/animation');
+  };
+
+  const handleSelectAnimation = async (animationId: string) => {
+    setSelectedAnimationId(animationId);
+    const animationManager = AnimationManager.getInstance();
+    await animationManager.selectAnimation(animationId);
   };
 
   const handleSleepTimerChange = (timer: SleepTimer) => {
@@ -137,6 +156,13 @@ export default function MainMenuScreen() {
 
         {renderSleepTimerSelector()}
         {renderWhiteNoiseToggle()}
+        
+        {/* Animation Selection Carousel */}
+        <AnimationCarousel
+          animations={animations}
+          selectedAnimation={selectedAnimationId}
+          onSelectAnimation={handleSelectAnimation}
+        />
 
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.textButton} onPress={handleChangeUnlock}>
