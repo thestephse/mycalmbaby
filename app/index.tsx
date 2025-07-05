@@ -12,16 +12,32 @@ export default function IndexScreen() {
 
   const checkOnboardingStatus = async () => {
     try {
+      // Add a small delay to ensure AsyncStorage is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
       
       if (hasCompletedOnboarding === 'true') {
         router.replace('/main-menu');
       } else {
+        // Only go to onboarding if explicitly not completed
         router.replace('/onboarding');
       }
     } catch (error) {
       console.error('Failed to check onboarding status:', error);
-      // Default to onboarding if there's an error
+      // Try one more time after a delay before defaulting to onboarding
+      try {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const retryCheck = await AsyncStorage.getItem('hasCompletedOnboarding');
+        if (retryCheck === 'true') {
+          router.replace('/main-menu');
+          return;
+        }
+      } catch (retryError) {
+        console.error('Retry failed:', retryError);
+      }
+      
+      // Default to onboarding if all attempts fail
       router.replace('/onboarding');
     } finally {
       setIsLoading(false);

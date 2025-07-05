@@ -5,14 +5,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  Dimensions,
   Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width, height } = Dimensions.get('window');
 
 type OnboardingStep = 'welcome' | 'explain-lock' | 'setup-sequence';
 type Corner = 'TL' | 'TR' | 'BL' | 'BR';
@@ -24,18 +21,46 @@ const CORNER_POSITIONS = {
   BR: { bottom: 50, right: 50 },
 };
 
+// Helper function to compare two arrays
+function compareArrays(arr1: any[], arr2: any[]): boolean {
+  if (arr1.length !== arr2.length) return false;
+  return arr1.every((value, index) => value === arr2[index]);
+}
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState<OnboardingStep>('welcome');
   const [unlockSequence, setUnlockSequence] = useState<Corner[]>([]);
   const [tappedCorners, setTappedCorners] = useState<Corner[]>([]);
+  const [showError, setShowError] = useState<boolean>(false);
 
   const handleCornerTap = (corner: Corner) => {
+    // If we already have 4 corners and showing error, reset to start new sequence
+    if (tappedCorners.length === 4 && showError) {
+      setTappedCorners([corner]);
+      setShowError(false);
+      return;
+    }
+    
+    // Reset error state when starting a new sequence
+    if (tappedCorners.length === 0) {
+      setShowError(false);
+    }
+    
     if (tappedCorners.length < 4) {
       const newTapped = [...tappedCorners, corner];
       setTappedCorners(newTapped);
       
       if (newTapped.length === 4) {
-        setUnlockSequence(newTapped);
+        // Show error indicator for 1 second before resetting
+        if (unlockSequence.length > 0 && !compareArrays(newTapped, unlockSequence)) {
+          setShowError(true);
+          setTimeout(() => {
+            setTappedCorners([]);
+            setShowError(false);
+          }, 1000);
+        } else {
+          setUnlockSequence(newTapped);
+        }
       }
     }
   };
@@ -43,15 +68,32 @@ export default function OnboardingScreen() {
   const resetSequence = () => {
     setTappedCorners([]);
     setUnlockSequence([]);
+    setShowError(false);
   };
 
   const confirmSequence = async () => {
     if (unlockSequence.length === 4) {
       try {
+        // Save the unlock sequence
         await AsyncStorage.setItem('unlockSequence', JSON.stringify(unlockSequence));
+        
+        // Mark onboarding as completed - save multiple times to ensure it sticks
         await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+        
+        // Verify the data was saved
+        const verifyOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+        const verifySequence = await AsyncStorage.getItem('unlockSequence');
+        
+        if (verifyOnboarding !== 'true' || !verifySequence) {
+          // Try one more time if verification failed
+          await AsyncStorage.setItem('unlockSequence', JSON.stringify(unlockSequence));
+          await AsyncStorage.setItem('hasCompletedOnboarding', 'true');
+        }
+        
+        // Navigate to main menu
         router.replace('/main-menu');
       } catch (error) {
+        console.error('Failed to save onboarding data:', error);
         Alert.alert('Error', 'Failed to save unlock sequence. Please try again.');
       }
     }
@@ -93,7 +135,7 @@ export default function OnboardingScreen() {
       </View>
       <Text style={styles.headline}>Your secret unlock</Text>
       <Text style={styles.bodyText}>
-        To keep your baby safe, you'll create a 4-corner tap sequence that only you know. 
+        To keep your baby safe, you&apos;ll create a 4-corner tap sequence that only you know. 
         This prevents accidental exits during use.
       </Text>
       <TouchableOpacity
@@ -109,7 +151,7 @@ export default function OnboardingScreen() {
     <View style={styles.stepContainer}>
       <Text style={styles.headline}>Tap your four corners in order</Text>
       <Text style={styles.bodyText}>
-        Choose a sequence you'll remember. You can change this later in settings.
+        Choose a sequence you&apos;ll remember. You can change this later in settings.
       </Text>
       
       <View style={styles.sequenceContainer}>
@@ -133,6 +175,22 @@ export default function OnboardingScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        
+        {/* Visual indicator dots - only show after first corner press */}
+        {tappedCorners.length > 0 && (
+          <View style={styles.dotsContainer}>
+            {[0, 1, 2, 3].map((index) => (
+              <View 
+                key={index} 
+                style={[
+                  styles.sequenceDot,
+                  tappedCorners.length > index && styles.activeDot,
+                  showError && tappedCorners.length > index && styles.errorDot
+                ]}
+              />
+            ))}
+          </View>
+        )}
         
         <View style={styles.sequenceDisplay}>
           <Text style={styles.sequenceText}>
@@ -169,6 +227,28 @@ export default function OnboardingScreen() {
 }
 
 const styles = StyleSheet.create({
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  sequenceDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+  },
+  activeDot: {
+    backgroundColor: '#808080',
+    borderColor: '#606060',
+  },
+  errorDot: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF3333',
+  },
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',

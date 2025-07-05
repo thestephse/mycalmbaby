@@ -437,9 +437,20 @@ export default function AnimationScreen() {
         />
       </View>
 
-      {/* Wrong sequence indicator - subtle dot in top center */}
-      {wrongSequenceIndicator && (
-        <View style={styles.wrongSequenceIndicator} />
+      {/* Sequence entry indicator dots - only show after first corner press */}
+      {currentSequence.length > 0 && (
+        <View style={styles.dotsContainer}>
+          {[0, 1, 2, 3].map((index) => (
+            <View 
+              key={index} 
+              style={[
+                styles.sequenceDot,
+                currentSequence.length > index && styles.activeDot,
+                wrongSequenceIndicator && styles.errorDot
+              ]}
+            />
+          ))}
+        </View>
       )}
     </View>
   );
@@ -449,6 +460,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  dotsContainer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    bottom: 50,
+    alignSelf: 'center',
+    zIndex: 10,
+  },
+  sequenceDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 8,
+    borderWidth: 1,
+    borderColor: '#CCCCCC',
+  },
+  activeDot: {
+    backgroundColor: '#808080',
+    borderColor: '#606060',
+  },
+  errorDot: {
+    backgroundColor: '#FF6B6B',
+    borderColor: '#FF3333',
   },
   animationContainer: {
     flex: 1,
