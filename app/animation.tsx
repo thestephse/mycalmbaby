@@ -223,10 +223,14 @@ export default function AnimationScreen() {
     const startSleepTimer = (minutes: number) => {
       if (minutes > 0) {
         console.log(`Sleep timer started: ${minutes} minutes`);
-        setTimeout(() => {
+        // Store the timer reference so we can clear it if needed
+        const timerRef = setTimeout(() => {
           console.log('Sleep timer expired, returning to main menu');
           fadeOutAndExit();
         }, minutes * 60 * 1000);
+        
+        // Store the timer reference for cleanup
+        sequenceTimeoutRef.current = timerRef;
       }
     };
 
@@ -258,8 +262,11 @@ export default function AnimationScreen() {
             console.log('Audio cleanup error:', audioError);
           }
         }
+        // Clear any existing sleep timer
         if (sequenceTimeoutRef.current) {
+          console.log('Clearing existing sleep timer');
           clearTimeout(sequenceTimeoutRef.current);
+          sequenceTimeoutRef.current = null;
         }
         
         // Restore navigation bar
@@ -281,8 +288,8 @@ export default function AnimationScreen() {
         loadAndPlayWhiteNoise();
       }
       
-      // Start sleep timer if enabled
-      if (sleepTimer > 0) {
+      // Start sleep timer if enabled and not already started
+      if (sleepTimer > 0 && !sequenceTimeoutRef.current) {
         startSleepTimer(sleepTimer);
       }
     };
@@ -299,7 +306,7 @@ export default function AnimationScreen() {
       cleanup();
       backHandler.remove();
     };
-  }, [animationValue, isPlaying, rotationValue, scaleValue, sleepTimer, whiteNoiseEnabled]);  // Adding required dependencies
+  }, []); // Empty dependency array to run only once on mount
 
   // initializeScreen moved inside useEffect
 
