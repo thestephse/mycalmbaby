@@ -23,8 +23,9 @@ import AnimationManager, {
 
 // Default animation components (fallbacks)
 import BasicShapesAnimation from './animations/basic-shapes/animation';
-import NaturePatternsAnimation from './animations/nature-patterns/animation';
+
 import SpaceJourneyAnimation from './animations/space-journey/animation';
+
 import BurstingBubblesAnimation from './animations/bursting-bubbles/animation';
 
 const { width, height } = Dimensions.get('window');
@@ -486,33 +487,24 @@ export default function AnimationScreen() {
     }
 
     // Determine which animation component to use based on the selected animation
-    let AnimationComponent;
+    let AnimationComponent: React.ComponentType<any>;
 
     // Use the animation ID to select the appropriate component
-    console.log('Current animation ID:', currentAnimation.id);
     switch (currentAnimation.id) {
       case 'basic-shapes':
-        console.log('Loading BasicShapesAnimation component');
         AnimationComponent = BasicShapesAnimation;
         break;
-      case 'nature-patterns':
-        console.log('Loading NaturePatternsAnimation component');
-        AnimationComponent = NaturePatternsAnimation;
-        break;
       case 'space-journey':
-        console.log('Loading SpaceJourneyAnimation component');
         AnimationComponent = SpaceJourneyAnimation;
         break;
+
       case 'bursting-bubbles':
-        console.log('Loading BurstingBubblesAnimation component');
         AnimationComponent = BurstingBubblesAnimation;
         break;
       default:
-        // If no matching animation is found, use BasicShapesAnimation as fallback
         console.log('No matching animation found for ID:', currentAnimation.id);
         AnimationComponent = BasicShapesAnimation;
     }
-
     // Debug the component
     console.log('AnimationComponent type:', typeof AnimationComponent);
     console.log(
@@ -539,7 +531,7 @@ export default function AnimationScreen() {
       // Render the selected animation component with all necessary props
       return (
         <AnimationComponent
-          // Props for basic-shapes and nature-patterns
+          // Props for basic-shapes
           animationValue={animationValue}
           rotationValue={rotationValue}
           scaleValue={scaleValue}
@@ -548,6 +540,7 @@ export default function AnimationScreen() {
           // Props for bursting-bubbles and space-journey
           width={width}
           height={height}
+          onBackgroundTap={handleTouch}
           onAnimationLoaded={() =>
             console.log(`${currentAnimation.id} animation loaded`)
           }

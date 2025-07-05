@@ -7,6 +7,7 @@ interface AnimationProps {
   height?: number;
   elements?: AnimationElement[];
   onAnimationLoaded?: () => void;
+  onBackgroundTap?: (x: number, y: number) => void;
 }
 
 // Animation constants
@@ -47,7 +48,8 @@ const SpaceBubblesAnimation = React.memo(({
   width: propWidth = Dimensions.get('window').width, 
   height: propHeight = Dimensions.get('window').height,
   elements = [],
-  onAnimationLoaded
+  onAnimationLoaded,
+  onBackgroundTap
 }: AnimationProps) => {
   // Container dimensions & absolute position (updated via onLayout)
   const [containerDims, setContainerDims] = useState({ width: propWidth, height: propHeight });
@@ -254,6 +256,8 @@ const SpaceBubblesAnimation = React.memo(({
   // Handle touch on the animation area
   const handleTouch = useCallback((event: any) => {
     const { pageX, pageY } = event.nativeEvent;
+    // Notify parent (unlock logic expects absolute coordinates)
+    onBackgroundTap?.(pageX, pageY);
     const x = pageX - containerOffset.current.x;
     const y = pageY - containerOffset.current.y;
     
@@ -273,7 +277,7 @@ const SpaceBubblesAnimation = React.memo(({
     } else {
       createDotBurst(x, y);
     }
-  }, [bubbles, splitBubble, createDotBurst, getAnimatedValue]);
+  }, [bubbles, splitBubble, createDotBurst, getAnimatedValue, onBackgroundTap]);
   
   // Animation function for bubbles - smoother floating motion
   const animateBubbles = useCallback(() => {

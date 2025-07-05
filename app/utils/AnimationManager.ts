@@ -35,7 +35,6 @@ export interface AnimationElement {
  */
 const ANIMATION_FOLDERS = [
   'basic-shapes',
-  'spiral-pinwheel',
   'space-journey',
   'bursting-bubbles',
 ];
@@ -49,19 +48,13 @@ const FALLBACK_ANIMATIONS: AnimationConfig[] = [
     folder: 'basic-shapes',
     thumbnail: require('../animations/basic-shapes/thumbnail.png'),
   },
-  {
-    id: 'spiral-pinwheel',
-    name: 'Spiral Pinwheel',
-    description: 'Mesmerizing spiral patterns with primary colors',
-    folder: 'spiral-pinwheel',
-    thumbnail: require('../animations/spiral-pinwheel/thumbnail.png'),
-  },
+
   {
     id: 'space-journey',
     name: 'Space Journey',
     description: 'Explore the cosmos with soothing space-themed animations',
     folder: 'space-journey',
-    thumbnail: require('../animations/space-journey/thumbnail.png'),
+    thumbnail: undefined,
   },
 ];
 
@@ -84,8 +77,7 @@ class AnimationManager {
       switch (folder) {
         case 'basic-shapes':
           return require('../animations/basic-shapes/animation.json');
-        case 'spiral-pinwheel':
-          return require('../animations/spiral-pinwheel/animation.json');
+
         case 'space-journey':
           return require('../animations/space-journey/animation.json');
         case 'bursting-bubbles':
@@ -109,8 +101,7 @@ class AnimationManager {
       switch (folder) {
         case 'basic-shapes':
           return require('../animations/basic-shapes/thumbnail.png');
-        case 'spiral-pinwheel':
-          return require('../animations/spiral-pinwheel/thumbnail.png');
+
         case 'space-journey':
           return require('../animations/space-journey/thumbnail.png');
         case 'bursting-bubbles':
@@ -138,8 +129,11 @@ class AnimationManager {
 
       // Load selected animation from storage
       const savedAnimationId = await AsyncStorage.getItem('selectedAnimation');
-      if (savedAnimationId) {
+      if (savedAnimationId && this.animations.find(a => a.id === savedAnimationId)) {
         this.selectedAnimationId = savedAnimationId;
+      } else if (this.animations.length > 0) {
+        this.selectedAnimationId = this.animations[0].id;
+        await AsyncStorage.setItem('selectedAnimation', this.selectedAnimationId);
       }
     } catch (error) {
       console.error('Failed to initialize AnimationManager:', error);
