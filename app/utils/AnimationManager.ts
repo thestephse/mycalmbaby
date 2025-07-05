@@ -34,6 +34,7 @@ const ANIMATION_FOLDERS = [
   'basic-shapes',
   'nature-patterns',
   'space-journey',
+  'space-bubbles',
   // Add more animation folders here as they are created
 ];
 
@@ -135,6 +136,10 @@ class AnimationManager {
             case 'space-journey':
               animationConfig = require('../animations/space-journey/animation.json');
               if (animationConfig) animationConfig.thumbnail = require('../animations/space-journey/thumbnail.png');
+              break;
+            case 'space-bubbles':
+              animationConfig = require('../animations/space-bubbles/animation.json');
+              if (animationConfig) animationConfig.thumbnail = require('../animations/space-bubbles/thumbnail.png');
               break;
             default:
               console.log(`No animation found for folder: ${folder}`);
