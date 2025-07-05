@@ -12,6 +12,7 @@ import {
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import AudioManager from './utils/AudioManager';
 
 type SleepTimer = 15 | 30 | 60;
 
@@ -34,55 +35,58 @@ export default function MainMenuScreen() {
   ]);
 
   useEffect(() => {
-    loadSettings();
+    const loadAndApplySettings = async () => {
+      try {
+        const savedTimer = await AsyncStorage.getItem('sleepTimer');
+        const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
+        const savedPacks = await AsyncStorage.getItem('purchasedPacks');
+
+        const isNoiseEnabled = savedWhiteNoise === null || savedWhiteNoise === 'true';
+        setWhiteNoiseEnabled(isNoiseEnabled);
+
+        if (isNoiseEnabled) {
+          AudioManager.play();
+        } else {
+          AudioManager.stop();
+        }
+
+        if (savedTimer) {
+          setSleepTimer(parseInt(savedTimer) as SleepTimer);
+        }
+        if (savedPacks) {
+          const purchasedIds = JSON.parse(savedPacks);
+          setAnimationPacks(prev => 
+            prev.map(pack => ({
+              ...pack,
+              purchased: pack.id === 'default' || purchasedIds.includes(pack.id)
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+
+    loadAndApplySettings();
   }, []);
 
-  const loadSettings = async () => {
-    try {
-      const savedTimer = await AsyncStorage.getItem('sleepTimer');
-      const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
-      const savedPacks = await AsyncStorage.getItem('purchasedPacks');
-
-      if (savedTimer) {
-        setSleepTimer(parseInt(savedTimer) as SleepTimer);
-      }
-      if (savedWhiteNoise !== null) {
-        setWhiteNoiseEnabled(savedWhiteNoise === 'true');
-      }
-      if (savedPacks) {
-        const purchasedIds = JSON.parse(savedPacks);
-        setAnimationPacks(prev => 
-          prev.map(pack => ({
-            ...pack,
-            purchased: pack.id === 'default' || purchasedIds.includes(pack.id)
-          }))
-        );
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
-
-  const saveSettings = async () => {
-    try {
-      await AsyncStorage.setItem('sleepTimer', sleepTimer.toString());
-      await AsyncStorage.setItem('whiteNoiseEnabled', whiteNoiseEnabled.toString());
-    } catch (error) {
-      console.error('Failed to save settings:', error);
-    }
-  };
-
   const handlePlay = () => {
-    saveSettings();
     router.push('/animation');
   };
 
   const handleSleepTimerChange = (timer: SleepTimer) => {
     setSleepTimer(timer);
+    AsyncStorage.setItem('sleepTimer', timer.toString());
   };
 
-  const handleWhiteNoiseToggle = (value: boolean) => {
+  const handleWhiteNoiseToggle = async (value: boolean) => {
     setWhiteNoiseEnabled(value);
+    await AsyncStorage.setItem('whiteNoiseEnabled', value.toString());
+    if (value) {
+      AudioManager.play();
+    } else {
+      AudioManager.stop();
+    }
   };
 
   const handlePurchasePack = (packId: string) => {
@@ -125,8 +129,6 @@ export default function MainMenuScreen() {
   const handleChangeUnlock = () => {
     router.push('/onboarding?step=setup-sequence');
   };
-
-  // Exit app functionality removed
 
   const renderSleepTimerSelector = () => (
     <View style={styles.section}>

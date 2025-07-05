@@ -102,6 +102,20 @@ class AudioManager {
   }
 
   /**
+   * Play white noise (alias for startWhiteNoise for backward compatibility)
+   */
+  public async play(): Promise<boolean> {
+    return this.startWhiteNoise();
+  }
+
+  /**
+   * Stop white noise (alias for stopWhiteNoise for backward compatibility)
+   */
+  public async stop(): Promise<boolean> {
+    return this.stopWhiteNoise();
+  }
+
+  /**
    * Release all audio resources
    */
   public async cleanup(): Promise<void> {
