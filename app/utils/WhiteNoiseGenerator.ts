@@ -129,21 +129,18 @@ class WhiteNoiseGenerator {
       }
 
       const buffer = this.generateWhiteNoiseBuffer();
-            const uint8Array = new Uint8Array(buffer);
-      let binary = '';
-      const len = uint8Array.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(uint8Array[i]);
-      }
-      const base64 = btoa(binary);
       const uri = FileSystem.cacheDirectory + 'whitenoise.wav';
+
+      // Use a library to convert ArrayBuffer to Base64
+      const base64 = require('base64-js').fromByteArray(new Uint8Array(buffer));
 
       await FileSystem.writeAsStringAsync(uri, base64, {
         encoding: FileSystem.EncodingType.Base64,
       });
 
       const { sound } = await Audio.Sound.createAsync(
-        { uri },
+        // @ts-ignore
+        { uri: uri },
         {
           shouldPlay: false,
           isLooping: true,
@@ -347,4 +344,4 @@ class WhiteNoiseGenerator {
   }
 }
 
-export default WhiteNoiseGenerator;
+export default WhiteNoiseGenerator.getInstance();

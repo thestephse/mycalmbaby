@@ -212,6 +212,7 @@ export default function AnimationScreen() {
       await initializeScreen();
       await loadSettings();
       setupAnimations();
+      loadAndPlayWhiteNoise();
     };
     
     init();
