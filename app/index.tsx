@@ -16,9 +16,17 @@ export default function IndexScreen() {
       await new Promise(resolve => setTimeout(resolve, 100));
       
       const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
+      const unlockSequence = await AsyncStorage.getItem('unlockSequence');
       
       if (hasCompletedOnboarding === 'true') {
-        router.replace('/main-menu');
+        // Check if unlock sequence exists
+        if (!unlockSequence) {
+          // Onboarding is complete but unlock sequence is missing
+          // Redirect to setup sequence step
+          router.replace('/onboarding?step=setup-sequence');
+        } else {
+          router.replace('/main-menu');
+        }
       } else {
         // Only go to onboarding if explicitly not completed
         router.replace('/onboarding');
