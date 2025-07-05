@@ -13,7 +13,7 @@ import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
-import AudioManager from './utils/AudioManager';
+
 
 const { width, height } = Dimensions.get('window');
 
@@ -185,15 +185,7 @@ export default function AnimationScreen() {
         }
         
         // Clean up audio with fade-out
-        try {
-          if (isPlaying) {
-            // Just trigger stop without awaiting to decouple from animation
-            AudioManager.stopWhiteNoise();
-            setIsPlaying(false);
-          }
-        } catch (audioError) {
-          console.error('Error cleaning up audio:', audioError);
-        }
+        
         
         if (sequenceTimeoutRef.current) {
           clearTimeout(sequenceTimeoutRef.current);
@@ -235,21 +227,7 @@ export default function AnimationScreen() {
 
   // loadSettings moved inside useEffect
 
-  // Used by the pan responder gesture handlers
-  const loadAndPlayWhiteNoise = async () => {
-    try {
-      if (whiteNoiseEnabled) {
-        // Initialize and play white noise using AudioManager
-        // This now runs independently from animations
-        await AudioManager.initialize();
-        const success = await AudioManager.startWhiteNoise();
-        setIsPlaying(success);
-      }
-    } catch (error) {
-      console.error('Failed to load white noise:', error);
-      // Continue without audio if loading fails
-    }
-  };
+  
 
   // Used when sleep timer is activated via UI
   const startSleepTimer = (minutes: number) => {
@@ -262,13 +240,7 @@ export default function AnimationScreen() {
 
   const fadeOutAndExit = async () => {
     try {
-      // Signal to stop audio, but don't wait for it to complete
-      // This allows the audio fade-out to happen independently
-      if (isPlaying) {
-        // Just trigger the stop process but don't await it
-        AudioManager.stopWhiteNoise();
-        setIsPlaying(false);
-      }
+      
       
       // Fade out animation
       Animated.timing(animationValue, {
@@ -280,11 +252,7 @@ export default function AnimationScreen() {
       });
     } catch (error) {
       console.error('Fade out error:', error);
-      try {
-        await AudioManager.cleanup();
-      } catch (error) {
-        console.error('Error cleaning up white noise generator:', error);
-      }
+      
       router.replace('/main-menu');
     }
   };
