@@ -1,0 +1,575 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  PanResponder,
+  Animated,
+  BackHandler,
+  Image,
+  TouchableOpacity,
+} from 'react-native';
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Audio } from 'expo-av';
+import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
+import * as ScreenOrientation from 'expo-screen-orientation';
+import * as NavigationBar from 'expo-navigation-bar';
+import { designTokens } from './styles/designTokens';
+import AnimationDrawer from './components/AnimationDrawer';
+import { Ionicons } from '@expo/vector-icons';
+import AudioManager from './utils/AudioManager';
+
+const { width, height } = Dimensions.get('window');
+
+type Corner = 'TL' | 'TR' | 'BL' | 'BR';
+
+interface TouchZone {
+  corner: Corner;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// Dynamic corner size based on screen dimensions (25% of smaller dimension, min 120px)
+const CORNER_SIZE = Math.max(120, Math.min(width, height) * 0.25);
+const SEQUENCE_TIMEOUT = 3000; // 3 seconds to complete sequence
+
+export default function AnimationScreen() {
+  const [unlockSequence, setUnlockSequence] = useState<Corner[]>([]);
+  const [currentSequence, setCurrentSequence] = useState<Corner[]>([]);
+  const [wrongSequenceIndicator, setWrongSequenceIndicator] = useState(false);
+  const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
+  const [sleepTimer, setSleepTimer] = useState<number>(30);
+  const [selectedAnimationId, setSelectedAnimationId] = useState<string>('basic-shapes');
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  
+  const sequenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const animationValue = useRef(new Animated.Value(0)).current;
+  const rotationValue = useRef(new Animated.Value(0)).current;
+  const scaleValue = useRef(new Animated.Value(1)).current;
+
+  // Define touch zones for corners - much larger for better mobile experience
+  const touchZones: TouchZone[] = [
+    { corner: 'TL', x: 0, y: 0, width: CORNER_SIZE, height: CORNER_SIZE },
+    { corner: 'TR', x: width - CORNER_SIZE, y: 0, width: CORNER_SIZE, height: CORNER_SIZE },
+    { corner: 'BL', x: 0, y: height - CORNER_SIZE, width: CORNER_SIZE, height: CORNER_SIZE },
+    { corner: 'BR', x: width - CORNER_SIZE, y: height - CORNER_SIZE, width: CORNER_SIZE, height: CORNER_SIZE },
+  ];
+
+  // Store animation references so we can stop them when needed
+  const animationRefs = useRef<{
+    rotation: Animated.CompositeAnimation | null;
+    scale: Animated.CompositeAnimation | null;
+    opacity: Animated.CompositeAnimation | null;
+  }>({ rotation: null, scale: null, opacity: null });
+
+  // Handle animation selection from the drawer
+  const handleSelectAnimation = (animationId: string) => {
+    setSelectedAnimationId(animationId);
+    // Save the selected animation to AsyncStorage
+    AsyncStorage.setItem('selectedAnimationPack', animationId);
+    // Here you would load and display the selected animation
+    console.log(`Selected animation: ${animationId}`);
+    // Close the drawer after selection
+    setIsDrawerOpen(false);
+  };
+
+  // Load and play white noise if enabled
+  const loadAndPlayWhiteNoise = () => {
+    if (whiteNoiseEnabled) {
+      AudioManager.startWhiteNoise();
+    } else {
+      AudioManager.stopWhiteNoise();
+    }
+  };
+
+  useEffect(() => {
+    const initializeScreen = async () => {
+      try {
+        // Keep screen awake
+        activateKeepAwake();
+        
+        // Enable audio for mobile devices
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            staysActiveInBackground: true,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: false,
+            playThroughEarpieceAndroid: false,
+          });
+        } catch (audioError: any) {
+          console.log('Audio mode setup failed:', audioError?.message || 'Unknown error');
+        }
+        
+        // Try to hide system UI (immersive mode) - only on mobile
+        try {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+        } catch (orientationError: any) {
+          console.log('Orientation lock not supported (likely web environment):', orientationError?.message || 'Unknown error');
+        }
+        
+        // Hide navigation bar on Android
+        try {
+          if (NavigationBar.setVisibilityAsync) {
+            await NavigationBar.setVisibilityAsync('hidden');
+          }
+        } catch (navError: any) {
+          console.log('Navigation bar control not supported:', navError?.message || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Failed to initialize screen:', error);
+      }
+    };
+
+    const loadSettings = async () => {
+      try {
+        const savedSequence = await AsyncStorage.getItem('unlockSequence');
+        const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
+        const savedTimer = await AsyncStorage.getItem('sleepTimer');
+        const savedAnimationId = await AsyncStorage.getItem('selectedAnimationPack');
+
+        if (savedSequence) {
+          setUnlockSequence(JSON.parse(savedSequence));
+        }
+        if (savedWhiteNoise !== null) {
+          const enabled = savedWhiteNoise === 'true';
+          setWhiteNoiseEnabled(enabled);
+        }
+        if (savedTimer) {
+          const timer = parseInt(savedTimer);
+          setSleepTimer(timer);
+        }
+        if (savedAnimationId) {
+          setSelectedAnimationId(savedAnimationId);
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+
+    const setupAnimations = async () => {
+      // Opacity animation
+      const opacityAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animationValue, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animationValue, {
+            toValue: 0.8,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      opacityAnimation.start();
+      animationRefs.current.opacity = opacityAnimation;
+
+      // Rotation animation
+      const rotationAnimation = Animated.loop(
+        Animated.timing(rotationValue, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: true,
+        })
+      );
+      rotationAnimation.start();
+      animationRefs.current.rotation = rotationAnimation;
+
+      // Scale animation
+      const scaleAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleValue, {
+            toValue: 1.2,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleValue, {
+            toValue: 0.8,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      scaleAnimation.start();
+      animationRefs.current.scale = scaleAnimation;
+    };
+
+    const cleanup = async () => {
+      try {
+        deactivateKeepAwake();
+        
+        // Stop all animations
+        if (animationRefs.current.rotation) {
+          animationRefs.current.rotation.stop();
+        }
+        if (animationRefs.current.scale) {
+          animationRefs.current.scale.stop();
+        }
+        if (animationRefs.current.opacity) {
+          animationRefs.current.opacity.stop();
+        }
+        
+        // Clean up audio with fade-out
+        AudioManager.stopWhiteNoise();
+        
+        if (sequenceTimeoutRef.current) {
+          clearTimeout(sequenceTimeoutRef.current);
+        }
+        
+        // Restore navigation bar
+        if (NavigationBar.setVisibilityAsync) {
+          await NavigationBar.setVisibilityAsync('visible');
+        }
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
+    };
+
+    const init = async () => {
+      await initializeScreen();
+      await loadSettings();
+      setupAnimations();
+      loadAndPlayWhiteNoise();
+    };
+    
+    init();
+    
+    // Handle Android back button
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      // If drawer is open, close it instead of exiting
+      if (isDrawerOpen) {
+        setIsDrawerOpen(false);
+        return true;
+      }
+      // Otherwise ignore back button in animation screen
+      return true;
+    });
+
+    return () => {
+      cleanup();
+      backHandler.remove();
+    };
+  }, [animationValue, rotationValue, scaleValue, whiteNoiseEnabled, isDrawerOpen]);
+
+  const fadeOutAndExit = async () => {
+    try {
+      // Stop white noise
+      AudioManager.stopWhiteNoise();
+      
+      // Fade out animation
+      Animated.timing(animationValue, {
+        toValue: 0,
+        duration: 2000,
+        useNativeDriver: true,
+      }).start(() => {
+        router.replace('/main-menu');
+      });
+    } catch (error) {
+      console.error('Fade out error:', error);
+      router.replace('/main-menu');
+    }
+  };
+
+  const getCornerFromTouch = (x: number, y: number): Corner | null => {
+    console.log(`Checking touch at (${x}, ${y}) against zones:`);
+    for (const zone of touchZones) {
+      console.log(`  ${zone.corner}: x(${zone.x}-${zone.x + zone.width}) y(${zone.y}-${zone.y + zone.height})`);
+      if (
+        x >= zone.x &&
+        x <= zone.x + zone.width &&
+        y >= zone.y &&
+        y <= zone.y + zone.height
+      ) {
+        console.log(`  ✓ Touch matched ${zone.corner}!`);
+        return zone.corner;
+      }
+    }
+    console.log('  ✗ No corner matched');
+    return null;
+  };
+
+  const handleTouch = (x: number, y: number) => {
+    // Don't process touches when drawer is open
+    if (isDrawerOpen) return;
+    
+    const corner = getCornerFromTouch(x, y);
+    
+    if (!corner) return;
+
+    const newSequence = [...currentSequence, corner];
+    setCurrentSequence(newSequence);
+
+    // Clear existing timeout
+    if (sequenceTimeoutRef.current) {
+      clearTimeout(sequenceTimeoutRef.current);
+    }
+
+    // Check if sequence is complete
+    if (newSequence.length === unlockSequence.length) {
+      const isCorrect = newSequence.every((corner, index) => corner === unlockSequence[index]);
+      
+      if (isCorrect) {
+        // Correct sequence - unlock and stop everything
+        fadeOutAndExit();
+        return;
+      } else {
+        // Wrong sequence - show indicator and reset
+        setWrongSequenceIndicator(true);
+        setCurrentSequence([]);
+        // Hide indicator after 1 second
+        setTimeout(() => setWrongSequenceIndicator(false), 1000);
+        return;
+      }
+    }
+
+    // Set timeout to reset sequence if not completed in time
+    sequenceTimeoutRef.current = setTimeout(() => {
+      setCurrentSequence([]);
+      // Show timeout indicator
+      setWrongSequenceIndicator(true);
+      setTimeout(() => setWrongSequenceIndicator(false), 1000);
+    }, SEQUENCE_TIMEOUT);
+  };
+
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => false,
+    onPanResponderGrant: (evt) => {
+      // Use pageX/pageY for absolute screen coordinates
+      const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
+      // Try both coordinate systems for better compatibility
+      const x = pageX || locationX || 0;
+      const y = pageY || locationY || 0;
+      console.log(`Touch detected at: (${x}, ${y}) - Screen: ${width}x${height} - Corner size: ${CORNER_SIZE}`);
+      handleTouch(x, y);
+    },
+    onPanResponderMove: () => {},
+    onPanResponderRelease: () => {},
+  });
+
+  const rotation = rotationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const opacity = animationValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.3, 1],
+  });
+
+  return (
+    <View style={styles.container} {...panResponder.panHandlers}>
+      {/* Header with icon */}
+      <View style={styles.header}>
+        <Image 
+          source={require('../assets/images/icons/splash-icon-dark.png')} 
+          style={styles.logoImage} 
+          resizeMode="contain"
+        />
+        <Text style={styles.title}>My Calm Baby</Text>
+        
+        {/* Animation selector button */}
+        <TouchableOpacity 
+          style={styles.animationButton}
+          onPress={() => setIsDrawerOpen(true)}
+        >
+          <Ionicons 
+            name="color-palette-outline" 
+            size={24} 
+            color={designTokens.colors.primary} 
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* Main Animation Elements */}
+      <View style={styles.animationContainer}>
+        {/* Circle 1 */}
+        <Animated.View
+          style={[
+            styles.circle,
+            styles.circle1,
+            {
+              opacity,
+              transform: [{ rotate: rotation }, { scale: scaleValue }],
+            },
+          ]}
+        />
+        
+        {/* Circle 2 */}
+        <Animated.View
+          style={[
+            styles.circle,
+            styles.circle2,
+            {
+              opacity: animationValue,
+              transform: [{ rotate: rotation }, { scale: scaleValue }],
+            },
+          ]}
+        />
+        
+        {/* Square 1 */}
+        <Animated.View
+          style={[
+            styles.square,
+            styles.square1,
+            {
+              opacity,
+              transform: [
+                { rotate: rotation },
+                { scale: scaleValue },
+                { rotateY: rotation },
+              ],
+            },
+          ]}
+        />
+        
+        {/* Square 2 */}
+        <Animated.View
+          style={[
+            styles.square,
+            styles.square2,
+            {
+              opacity: animationValue,
+              transform: [
+                { rotate: rotation },
+                { scale: scaleValue },
+                { rotateX: rotation },
+              ],
+            },
+          ]}
+        />
+      </View>
+      
+      {/* Sequence dots */}
+      {unlockSequence.length > 0 && (
+        <View style={styles.dotsContainer}>
+          {unlockSequence.map((_, index) => (
+            <View
+              key={index}
+              style={[
+                styles.sequenceDot,
+                currentSequence.length > index && styles.activeDot,
+                wrongSequenceIndicator && styles.errorDot,
+              ]}
+            />
+          ))}
+        </View>
+      )}
+      
+      {/* Wrong sequence indicator */}
+      {wrongSequenceIndicator && <View style={styles.wrongSequenceIndicator} />}
+      
+      {/* Animation Drawer */}
+      <AnimationDrawer 
+        onSelectAnimation={handleSelectAnimation}
+        selectedAnimationId={selectedAnimationId}
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: designTokens.colors.aliceBlue,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: designTokens.spacing.md,
+    paddingVertical: designTokens.spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: designTokens.colors.lightGray,
+  },
+  logoImage: {
+    width: 40,
+    height: 40,
+  },
+  title: {
+    fontSize: designTokens.typography.sizes.lg,
+    fontWeight: designTokens.typography.weights.semibold,
+    color: designTokens.colors.charcoal,
+    flex: 1,
+    textAlign: 'center',
+  },
+  animationButton: {
+    padding: designTokens.spacing.sm,
+    borderRadius: designTokens.borderRadius.full,
+    backgroundColor: designTokens.colors.lightGray,
+  },
+  dotsContainer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    bottom: designTokens.spacing.xxl,
+    alignSelf: 'center',
+    zIndex: 10,
+  },
+  sequenceDot: {
+    width: 16,
+    height: 16,
+    borderRadius: designTokens.borderRadius.sm,
+    backgroundColor: designTokens.colors.mediumGray,
+    marginHorizontal: designTokens.spacing.sm,
+    borderWidth: 1,
+    borderColor: designTokens.colors.lightGray,
+  },
+  activeDot: {
+    backgroundColor: designTokens.colors.primary,
+    borderColor: designTokens.colors.primaryDark,
+  },
+  errorDot: {
+    backgroundColor: designTokens.colors.error,
+    borderColor: designTokens.colors.anxietyRed,
+  },
+  animationContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circle: {
+    position: 'absolute',
+    borderWidth: 4,
+    borderColor: designTokens.colors.charcoal,
+    borderRadius: designTokens.borderRadius.full,
+  },
+  circle1: {
+    width: 120,
+    height: 120,
+  },
+  circle2: {
+    width: 80,
+    height: 80,
+  },
+  square: {
+    position: 'absolute',
+    backgroundColor: designTokens.colors.darkGray,
+  },
+  square1: {
+    width: 60,
+    height: 60,
+    top: -150,
+  },
+  square2: {
+    width: 40,
+    height: 40,
+    top: 150,
+  },
+  wrongSequenceIndicator: {
+    position: 'absolute',
+    top: designTokens.spacing.xxl,
+    alignSelf: 'center',
+    width: 8,
+    height: 8,
+    borderRadius: designTokens.borderRadius.sm / 2,
+    backgroundColor: designTokens.colors.error,
+    opacity: 0.8,
+  },
+});
