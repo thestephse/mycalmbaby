@@ -49,8 +49,9 @@ const SpaceBubblesAnimation = React.memo(({
   elements = [],
   onAnimationLoaded
 }: AnimationProps) => {
-  // Container dimensions (updated via onLayout)
+  // Container dimensions & absolute position (updated via onLayout)
   const [containerDims, setContainerDims] = useState({ width: propWidth, height: propHeight });
+  const containerOffset = useRef({ x: 0, y: 0 });
 
   // State for bubbles and dots
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
@@ -252,7 +253,9 @@ const SpaceBubblesAnimation = React.memo(({
   
   // Handle touch on the animation area
   const handleTouch = useCallback((event: any) => {
-    const { locationX: x, locationY: y } = event.nativeEvent;
+    const { pageX, pageY } = event.nativeEvent;
+    const x = pageX - containerOffset.current.x;
+    const y = pageY - containerOffset.current.y;
     
     // Check if a bubble was touched
     const touchedBubble = bubbles.find(bubble => {

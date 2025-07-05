@@ -16,14 +16,16 @@ import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
 import { designTokens } from './styles/designTokens';
-import AnimationManager, { AnimationConfig, AnimationElement } from './utils/AnimationManager';
+import AnimationManager, {
+  AnimationConfig,
+  AnimationElement,
+} from './utils/AnimationManager';
 
 // Default animation components (fallbacks)
 import BasicShapesAnimation from './animations/basic-shapes/animation';
 import NaturePatternsAnimation from './animations/nature-patterns/animation';
 import SpaceJourneyAnimation from './animations/space-journey/animation';
-import SpaceBubblesAnimation from './animations/space-bubbles/animation';
-
+import BurstingBubblesAnimation from './animations/bursting-bubbles/animation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,15 +50,19 @@ export default function AnimationScreen() {
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
   const [sleepTimer, setSleepTimer] = useState<number>(30);
   // We no longer need isPlaying state as we're using AudioManager
-  const [currentAnimation, setCurrentAnimation] = useState<AnimationConfig | undefined>();
-  const [animationElements, setAnimationElements] = useState<AnimationElement[]>([]);
-  
+  const [currentAnimation, setCurrentAnimation] = useState<
+    AnimationConfig | undefined
+  >();
+  const [animationElements, setAnimationElements] = useState<
+    AnimationElement[]
+  >([]);
+
   // We no longer need a sound reference as we're using AudioManager
   // const soundRef = useRef<Audio.Sound | null>(null);
-  
+
   // Reference to the fadeOutAndExit function to use it outside useEffect
   const fadeOutAndExitRef = useRef<() => void>(() => {});
-  
+
   const sequenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const animationValue = useRef(new Animated.Value(0)).current;
   const rotationValue = useRef(new Animated.Value(0)).current;
@@ -65,9 +71,27 @@ export default function AnimationScreen() {
   // Define touch zones for corners - much larger for better mobile experience
   const touchZones: TouchZone[] = [
     { corner: 'TL', x: 0, y: 0, width: CORNER_SIZE, height: CORNER_SIZE },
-    { corner: 'TR', x: width - CORNER_SIZE, y: 0, width: CORNER_SIZE, height: CORNER_SIZE },
-    { corner: 'BL', x: 0, y: height - CORNER_SIZE, width: CORNER_SIZE, height: CORNER_SIZE },
-    { corner: 'BR', x: width - CORNER_SIZE, y: height - CORNER_SIZE, width: CORNER_SIZE, height: CORNER_SIZE },
+    {
+      corner: 'TR',
+      x: width - CORNER_SIZE,
+      y: 0,
+      width: CORNER_SIZE,
+      height: CORNER_SIZE,
+    },
+    {
+      corner: 'BL',
+      x: 0,
+      y: height - CORNER_SIZE,
+      width: CORNER_SIZE,
+      height: CORNER_SIZE,
+    },
+    {
+      corner: 'BR',
+      x: width - CORNER_SIZE,
+      y: height - CORNER_SIZE,
+      width: CORNER_SIZE,
+      height: CORNER_SIZE,
+    },
   ];
 
   // Store animation references so we can stop them when needed
@@ -82,7 +106,7 @@ export default function AnimationScreen() {
       try {
         // Keep screen awake
         activateKeepAwake();
-        
+
         // Enable audio for mobile devices
         try {
           await Audio.setAudioModeAsync({
@@ -93,23 +117,34 @@ export default function AnimationScreen() {
             playThroughEarpieceAndroid: false,
           });
         } catch (audioError: any) {
-          console.log('Audio mode setup failed:', audioError?.message || 'Unknown error');
+          console.log(
+            'Audio mode setup failed:',
+            audioError?.message || 'Unknown error'
+          );
         }
-        
+
         // Try to hide system UI (immersive mode) - only on mobile
         try {
-          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+          await ScreenOrientation.lockAsync(
+            ScreenOrientation.OrientationLock.PORTRAIT
+          );
         } catch (orientationError: any) {
-          console.log('Orientation lock not supported (likely web environment):', orientationError?.message || 'Unknown error');
+          console.log(
+            'Orientation lock not supported (likely web environment):',
+            orientationError?.message || 'Unknown error'
+          );
         }
-        
+
         // Hide navigation bar on Android
         try {
           if (NavigationBar.setVisibilityAsync) {
             await NavigationBar.setVisibilityAsync('hidden');
           }
         } catch (navError: any) {
-          console.log('Navigation bar control not supported:', navError?.message || 'Unknown error');
+          console.log(
+            'Navigation bar control not supported:',
+            navError?.message || 'Unknown error'
+          );
         }
       } catch (error) {
         console.error('Failed to initialize screen:', error);
@@ -133,7 +168,7 @@ export default function AnimationScreen() {
           const timer = parseInt(savedTimer);
           setSleepTimer(timer);
         }
-        
+
         // Load the selected animation
         const animationManager = AnimationManager.getInstance();
         await animationManager.initialize();
@@ -215,10 +250,10 @@ export default function AnimationScreen() {
         router.replace('/main-menu');
       }
     };
-    
+
     // Store the function in ref so it can be accessed outside useEffect
     fadeOutAndExitRef.current = fadeOutAndExit;
-    
+
     // Start sleep timer to automatically return to main menu after specified minutes
     const startSleepTimer = (minutes: number) => {
       if (minutes > 0) {
@@ -228,7 +263,7 @@ export default function AnimationScreen() {
           console.log('Sleep timer expired, returning to main menu');
           fadeOutAndExit();
         }, minutes * 60 * 1000);
-        
+
         // Store the timer reference for cleanup
         sequenceTimeoutRef.current = timerRef;
       }
@@ -237,7 +272,7 @@ export default function AnimationScreen() {
     const cleanup = async () => {
       try {
         deactivateKeepAwake();
-        
+
         // Stop all animations
         if (animationRefs.current.rotation) {
           animationRefs.current.rotation.stop();
@@ -248,7 +283,7 @@ export default function AnimationScreen() {
         if (animationRefs.current.opacity) {
           animationRefs.current.opacity.stop();
         }
-        
+
         // IMPORTANT: Do NOT stop white noise when exiting the animation
         // White noise should continue playing if it was enabled in the main menu
         // AudioManager will handle the state based on the toggle in main menu
@@ -258,7 +293,7 @@ export default function AnimationScreen() {
           clearTimeout(sequenceTimeoutRef.current);
           sequenceTimeoutRef.current = null;
         }
-        
+
         // Restore navigation bar
         if (NavigationBar.setVisibilityAsync) {
           await NavigationBar.setVisibilityAsync('visible');
@@ -272,15 +307,17 @@ export default function AnimationScreen() {
       await initializeScreen();
       await loadSettings();
       setupAnimations();
-      
+
       // We should NOT use the local whiteNoiseEnabled state variable at all
       // Instead, directly check the saved value from AsyncStorage
       const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
       const shouldPlayWhiteNoise = savedWhiteNoise === 'true';
-      
+
       // Get the AudioManager instance
-      const audioManager = await import('./utils/AudioManager').then(m => m.default);
-      
+      const audioManager = await import('./utils/AudioManager').then(
+        (m) => m.default
+      );
+
       // Ensure white noise state matches the saved toggle state
       if (shouldPlayWhiteNoise && !audioManager.isWhiteNoisePlaying()) {
         // Toggle is ON but white noise is not playing - start it
@@ -293,26 +330,35 @@ export default function AnimationScreen() {
       } else {
         console.log('White noise state already matches saved toggle state');
       }
-      
+
       // Start sleep timer if enabled and not already started
       if (sleepTimer > 0 && !sequenceTimeoutRef.current) {
         startSleepTimer(sleepTimer);
       }
     };
-    
+
     init();
-    
+
     // Handle Android back button
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      // Ignore back button in animation screen
-      return true;
-    });
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        // Ignore back button in animation screen
+        return true;
+      }
+    );
 
     return () => {
       cleanup();
       backHandler.remove();
     };
-  }, [animationValue, rotationValue, scaleValue, sleepTimer, whiteNoiseEnabled]); // Include all dependencies used in the effect
+  }, [
+    animationValue,
+    rotationValue,
+    scaleValue,
+    sleepTimer,
+    whiteNoiseEnabled,
+  ]); // Include all dependencies used in the effect
 
   // All these functions are now inside useEffect
 
@@ -346,16 +392,16 @@ export default function AnimationScreen() {
   };
   */
 
-
-
-
-
   // startAnimations moved inside useEffect
 
   const getCornerFromTouch = (x: number, y: number): Corner | null => {
     console.log(`Checking touch at (${x}, ${y}) against zones:`);
     for (const zone of touchZones) {
-      console.log(`  ${zone.corner}: x(${zone.x}-${zone.x + zone.width}) y(${zone.y}-${zone.y + zone.height})`);
+      console.log(
+        `  ${zone.corner}: x(${zone.x}-${zone.x + zone.width}) y(${zone.y}-${
+          zone.y + zone.height
+        })`
+      );
       if (
         x >= zone.x &&
         x <= zone.x + zone.width &&
@@ -372,7 +418,7 @@ export default function AnimationScreen() {
 
   const handleTouch = (x: number, y: number) => {
     const corner = getCornerFromTouch(x, y);
-    
+
     if (!corner) return;
 
     const newSequence = [...currentSequence, corner];
@@ -385,8 +431,10 @@ export default function AnimationScreen() {
 
     // Check if sequence is complete
     if (newSequence.length === unlockSequence.length) {
-      const isCorrect = newSequence.every((corner, index) => corner === unlockSequence[index]);
-      
+      const isCorrect = newSequence.every(
+        (corner, index) => corner === unlockSequence[index]
+      );
+
       if (isCorrect) {
         // Correct sequence - unlock and stop everything
         fadeOutAndExitRef.current();
@@ -409,7 +457,7 @@ export default function AnimationScreen() {
       setTimeout(() => setWrongSequenceIndicator(false), 1000);
     }, 3000); // Default timeout
   };
-  
+
   // Create pan responder for touch handling
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
@@ -418,7 +466,9 @@ export default function AnimationScreen() {
       const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
       const x = pageX || locationX || 0;
       const y = pageY || locationY || 0;
-      console.log(`Touch detected at: (${x}, ${y}) - Screen: ${width}x${height} - Corner size: ${CORNER_SIZE}`);
+      console.log(
+        `Touch detected at: (${x}, ${y}) - Screen: ${width}x${height} - Corner size: ${CORNER_SIZE}`
+      );
       handleTouch(x, y);
     },
     onPanResponderMove: () => {},
@@ -437,7 +487,7 @@ export default function AnimationScreen() {
 
     // Determine which animation component to use based on the selected animation
     let AnimationComponent;
-    
+
     // Use the animation ID to select the appropriate component
     console.log('Current animation ID:', currentAnimation.id);
     switch (currentAnimation.id) {
@@ -453,19 +503,22 @@ export default function AnimationScreen() {
         console.log('Loading SpaceJourneyAnimation component');
         AnimationComponent = SpaceJourneyAnimation;
         break;
-      case 'space-bubbles':
-        console.log('Loading SpaceBubblesAnimation component');
-        AnimationComponent = SpaceBubblesAnimation;
+      case 'bursting-bubbles':
+        console.log('Loading BurstingBubblesAnimation component');
+        AnimationComponent = BurstingBubblesAnimation;
         break;
       default:
         // If no matching animation is found, use BasicShapesAnimation as fallback
         console.log('No matching animation found for ID:', currentAnimation.id);
         AnimationComponent = BasicShapesAnimation;
     }
-    
+
     // Debug the component
     console.log('AnimationComponent type:', typeof AnimationComponent);
-    console.log('AnimationComponent is undefined:', AnimationComponent === undefined);
+    console.log(
+      'AnimationComponent is undefined:',
+      AnimationComponent === undefined
+    );
 
     // Check if AnimationComponent is valid before rendering
     if (!AnimationComponent) {
@@ -492,10 +545,12 @@ export default function AnimationScreen() {
           scaleValue={scaleValue}
           elements={animationElements}
           styles={styles}
-          // Props for space-bubbles and space-journey
+          // Props for bursting-bubbles and space-journey
           width={width}
           height={height}
-          onAnimationLoaded={() => console.log(`${currentAnimation.id} animation loaded`)}
+          onAnimationLoaded={() =>
+            console.log(`${currentAnimation.id} animation loaded`)
+          }
         />
       );
     } catch (error) {
@@ -522,12 +577,12 @@ export default function AnimationScreen() {
       {currentSequence.length > 0 && (
         <View style={styles.dotsContainer}>
           {[0, 1, 2, 3].map((index) => (
-            <View 
-              key={index} 
+            <View
+              key={index}
               style={[
                 styles.sequenceDot,
                 currentSequence.length > index && styles.activeDot,
-                wrongSequenceIndicator && styles.errorDot
+                wrongSequenceIndicator && styles.errorDot,
               ]}
             />
           ))}
@@ -535,7 +590,7 @@ export default function AnimationScreen() {
       )}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -592,5 +647,4 @@ const styles = StyleSheet.create({
     backgroundColor: designTokens.colors.error,
     opacity: 0.8,
   },
-
 });

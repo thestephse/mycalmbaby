@@ -26,7 +26,7 @@ export interface AnimationElement {
       translateY?: boolean;
     };
     [key: string]: any;
-  }
+  };
 }
 
 /**
@@ -37,7 +37,7 @@ const ANIMATION_FOLDERS = [
   'basic-shapes',
   'spiral-pinwheel',
   'space-journey',
-  'space-bubbles'
+  'bursting-bubbles',
 ];
 
 // Fallback animations in case dynamic loading fails
@@ -62,7 +62,7 @@ const FALLBACK_ANIMATIONS: AnimationConfig[] = [
     description: 'Explore the cosmos with soothing space-themed animations',
     folder: 'space-journey',
     thumbnail: require('../animations/space-journey/thumbnail.png'),
-  }
+  },
 ];
 
 class AnimationManager {
@@ -88,8 +88,8 @@ class AnimationManager {
           return require('../animations/spiral-pinwheel/animation.json');
         case 'space-journey':
           return require('../animations/space-journey/animation.json');
-        case 'space-bubbles':
-          return require('../animations/space-bubbles/animation.json');
+        case 'bursting-bubbles':
+          return require('../animations/bursting-bubbles/animation.json');
         default:
           return null;
       }
@@ -98,7 +98,7 @@ class AnimationManager {
       return null;
     }
   }
-  
+
   /**
    * Load animation thumbnail from a specific folder
    * @param folder The animation folder name
@@ -113,8 +113,8 @@ class AnimationManager {
           return require('../animations/spiral-pinwheel/thumbnail.png');
         case 'space-journey':
           return require('../animations/space-journey/thumbnail.png');
-        case 'space-bubbles':
-          return require('../animations/space-bubbles/thumbnail.png');
+        case 'bursting-bubbles':
+          return require('../animations/bursting-bubbles/thumbnail.png');
         default:
           return undefined;
       }
@@ -151,12 +151,12 @@ class AnimationManager {
   }
 
   public getSelectedAnimation(): AnimationConfig | undefined {
-    return this.animations.find(anim => anim.id === this.selectedAnimationId);
+    return this.animations.find((anim) => anim.id === this.selectedAnimationId);
   }
 
   public async selectAnimation(animationId: string): Promise<void> {
     try {
-      const animation = this.animations.find(anim => anim.id === animationId);
+      const animation = this.animations.find((anim) => anim.id === animationId);
       if (animation) {
         this.selectedAnimationId = animationId;
         await AsyncStorage.setItem('selectedAnimation', animationId);
@@ -173,7 +173,7 @@ class AnimationManager {
   private async validateAnimationFolders(): Promise<string[]> {
     try {
       const validFolders: string[] = [];
-      
+
       // Validate each folder by checking if it has a valid animation.json
       for (const folder of ANIMATION_FOLDERS) {
         try {
@@ -185,11 +185,16 @@ class AnimationManager {
           }
         } catch {
           // Intentionally empty catch block - we just want to skip invalid folders
-          console.log(`Folder ${folder} does not contain a valid animation.json file`);
+          console.log(
+            `Folder ${folder} does not contain a valid animation.json file`
+          );
         }
       }
-      
-      console.log(`Found ${validFolders.length} valid animation folders:`, validFolders);
+
+      console.log(
+        `Found ${validFolders.length} valid animation folders:`,
+        validFolders
+      );
       return validFolders;
     } catch (error) {
       console.error('Error validating animation folders:', error);
@@ -204,16 +209,18 @@ class AnimationManager {
     try {
       // Clear existing animations
       this.animations = [];
-      
+
       // Get valid animation folders
       const validFolders = await this.validateAnimationFolders();
-      
+
       if (validFolders.length === 0) {
-        console.warn('No valid animation folders found, using fallback animations');
+        console.warn(
+          'No valid animation folders found, using fallback animations'
+        );
         this.animations = [...FALLBACK_ANIMATIONS];
         return;
       }
-      
+
       // Load animation configurations from valid folders
       for (const folder of validFolders) {
         try {
@@ -221,27 +228,34 @@ class AnimationManager {
           if (config) {
             // Load thumbnail
             const thumbnail = this.loadAnimationThumbnail(folder);
-            
+
             // Create animation config object
             const animationConfig: AnimationConfig = {
               ...config,
-              thumbnail
+              thumbnail,
             };
-            
+
             this.animations.push(animationConfig);
-            console.log(`Loaded animation: ${animationConfig.name} (${animationConfig.id})`);
+            console.log(
+              `Loaded animation: ${animationConfig.name} (${animationConfig.id})`
+            );
           }
         } catch (error) {
-          console.error(`Error loading animation from folder ${folder}:`, error);
+          console.error(
+            `Error loading animation from folder ${folder}:`,
+            error
+          );
         }
       }
-      
+
       // If no animations were loaded, use fallback animations
       if (this.animations.length === 0) {
-        console.warn('Failed to load any animations, using fallback animations');
+        console.warn(
+          'Failed to load any animations, using fallback animations'
+        );
         this.animations = [...FALLBACK_ANIMATIONS];
       }
-      
+
       console.log(`Total animations loaded: ${this.animations.length}`);
     } catch (error) {
       console.error('Error scanning for animations:', error);
