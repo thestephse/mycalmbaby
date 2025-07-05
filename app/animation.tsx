@@ -47,12 +47,12 @@ export default function AnimationScreen() {
   const [wrongSequenceIndicator, setWrongSequenceIndicator] = useState(false);
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
   const [sleepTimer, setSleepTimer] = useState<number>(30);
-  const [isPlaying, setIsPlaying] = useState(false);
+  // We no longer need isPlaying state as we're using AudioManager
   const [currentAnimation, setCurrentAnimation] = useState<AnimationConfig | undefined>();
   const [animationElements, setAnimationElements] = useState<AnimationElement[]>([]);
   
-  // Reference to the sound object for white noise
-  const soundRef = useRef<Audio.Sound | null>(null);
+  // We no longer need a sound reference as we're using AudioManager
+  // const soundRef = useRef<Audio.Sound | null>(null);
   
   // Reference to the fadeOutAndExit function to use it outside useEffect
   const fadeOutAndExitRef = useRef<() => void>(() => {});
@@ -249,19 +249,9 @@ export default function AnimationScreen() {
           animationRefs.current.opacity.stop();
         }
         
-        // Clean up audio with fade-out
-        if (soundRef.current) {
-          try {
-            const status = await soundRef.current.getStatusAsync();
-            // Only stop and unload if the sound is loaded
-            if (status.isLoaded) {
-              await soundRef.current.stopAsync();
-              await soundRef.current.unloadAsync();
-            }
-          } catch (audioError) {
-            console.log('Audio cleanup error:', audioError);
-          }
-        }
+        // IMPORTANT: Do NOT stop white noise when exiting the animation
+        // White noise should continue playing if it was enabled in the main menu
+        // AudioManager will handle the state based on the toggle in main menu
         // Clear any existing sleep timer
         if (sequenceTimeoutRef.current) {
           console.log('Clearing existing sleep timer');
@@ -283,9 +273,25 @@ export default function AnimationScreen() {
       await loadSettings();
       setupAnimations();
       
-      // Load and play white noise if enabled
-      if (whiteNoiseEnabled) {
-        loadAndPlayWhiteNoise();
+      // We should NOT use the local whiteNoiseEnabled state variable at all
+      // Instead, directly check the saved value from AsyncStorage
+      const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
+      const shouldPlayWhiteNoise = savedWhiteNoise === 'true';
+      
+      // Get the AudioManager instance
+      const audioManager = await import('./utils/AudioManager').then(m => m.default);
+      
+      // Ensure white noise state matches the saved toggle state
+      if (shouldPlayWhiteNoise && !audioManager.isWhiteNoisePlaying()) {
+        // Toggle is ON but white noise is not playing - start it
+        console.log('Starting white noise based on saved toggle state');
+        audioManager.play();
+      } else if (!shouldPlayWhiteNoise && audioManager.isWhiteNoisePlaying()) {
+        // Toggle is OFF but white noise is playing - stop it
+        console.log('Stopping white noise based on saved toggle state');
+        audioManager.stop();
+      } else {
+        console.log('White noise state already matches saved toggle state');
       }
       
       // Start sleep timer if enabled and not already started
@@ -306,15 +312,13 @@ export default function AnimationScreen() {
       cleanup();
       backHandler.remove();
     };
-  }, []); // Empty dependency array to run only once on mount
+  }, [animationValue, rotationValue, scaleValue, sleepTimer, whiteNoiseEnabled]); // Include all dependencies used in the effect
 
-  // initializeScreen moved inside useEffect
+  // All these functions are now inside useEffect
 
-  // cleanup moved inside useEffect
-
-  // loadSettings moved inside useEffect
-
-  // Load and play white noise
+  // This function is no longer needed as we're using AudioManager
+  // Keeping it commented out for reference
+  /*
   const loadAndPlayWhiteNoise = async () => {
     try {
       // Unload any existing sound first
@@ -340,6 +344,7 @@ export default function AnimationScreen() {
       console.error('Failed to load and play white noise:', error);
     }
   };
+  */
 
 
 
