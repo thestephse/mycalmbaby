@@ -8,7 +8,6 @@ import {
   ScrollView,
   Switch,
   Alert,
-  BackHandler,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,21 +28,13 @@ export default function MainMenuScreen() {
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
   const [animationPacks, setAnimationPacks] = useState<AnimationPack[]>([
     { id: 'default', name: 'Basic Shapes', price: 'Free', purchased: true },
-    { id: 'nature', name: 'Nature Patterns', price: '€0.99', purchased: false },
-    { id: 'geometric', name: 'Geometric Flow', price: '€0.99', purchased: false },
-    { id: 'organic', name: 'Organic Forms', price: '€0.99', purchased: false },
+    { id: 'nature', name: 'Nature Patterns', price: '', purchased: false },
+    { id: 'geometric', name: 'Geometric Flow', price: '', purchased: false },
+    { id: 'organic', name: 'Organic Forms', price: '', purchased: false },
   ]);
 
   useEffect(() => {
     loadSettings();
-    
-    // Handle Android back button
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      handleExitApp();
-      return true;
-    });
-
-    return () => backHandler.remove();
   }, []);
 
   const loadSettings = async () => {
@@ -126,7 +117,7 @@ export default function MainMenuScreen() {
         
         Alert.alert('Success', 'Animation pack purchased successfully!');
       }
-    } catch (error) {
+    } catch (_) {
       Alert.alert('Error', 'Failed to complete purchase. Please try again.');
     }
   };
@@ -135,16 +126,7 @@ export default function MainMenuScreen() {
     router.push('/onboarding?step=setup-sequence');
   };
 
-  const handleExitApp = () => {
-    Alert.alert(
-      'Exit CalmBaby',
-      'Are you sure you want to exit the app?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Exit', onPress: () => BackHandler.exitApp() }
-      ]
-    );
-  };
+  // Exit app functionality removed
 
   const renderSleepTimerSelector = () => (
     <View style={styles.section}>
@@ -195,14 +177,15 @@ export default function MainMenuScreen() {
           </View>
           <View style={styles.packInfo}>
             <Text style={styles.packName}>{pack.name}</Text>
-            <Text style={styles.packPrice}>{pack.price}</Text>
+            {pack.price && <Text style={styles.packPrice}>{pack.price}</Text>}
           </View>
           {!pack.purchased ? (
             <TouchableOpacity
-              style={styles.purchaseButton}
+              style={[styles.purchaseButton, !pack.id.includes('default') && styles.disabledButton]}
               onPress={() => handlePurchasePack(pack.id)}
+              disabled={!pack.id.includes('default')}
             >
-              <Text style={styles.purchaseButtonText}>Buy</Text>
+              <Text style={styles.purchaseButtonText}>Download</Text>
             </TouchableOpacity>
           ) : (
             <View style={styles.purchasedBadge}>
@@ -218,7 +201,18 @@ export default function MainMenuScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>CalmBaby</Text>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoBackground}>
+              <View style={styles.logoCircle}>
+                {/* Small circles representing the SVG pattern */}
+                <View style={[styles.smallCircle, styles.smallCircleTop]} />
+                <View style={[styles.smallCircle, styles.smallCircleRight]} />
+                <View style={[styles.smallCircle, styles.smallCircleBottom]} />
+                <View style={[styles.smallCircle, styles.smallCircleLeft]} />
+              </View>
+            </View>
+          </View>
+          <Text style={styles.title}>My Calm Baby</Text>
         </View>
 
         <TouchableOpacity style={styles.playButton} onPress={handlePlay}>
@@ -233,10 +227,6 @@ export default function MainMenuScreen() {
         <View style={styles.bottomActions}>
           <TouchableOpacity style={styles.textButton} onPress={handleChangeUnlock}>
             <Text style={styles.textButtonText}>Change Unlock Sequence</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.exitButton} onPress={handleExitApp}>
-            <Text style={styles.exitButtonText}>Exit App</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -259,6 +249,55 @@ const styles = StyleSheet.create({
   header: {
     alignItems: 'center',
     paddingVertical: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  logoContainer: {
+    width: 50,
+    height: 50,
+    marginRight: 12,
+  },
+  logoBackground: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    backgroundColor: '#A8D5BA',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    position: 'relative',
+  },
+  smallCircle: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#A8D5BA',
+    position: 'absolute',
+  },
+  smallCircleTop: {
+    top: 0,
+    left: '50%',
+    marginLeft: -4,
+  },
+  smallCircleRight: {
+    right: 0,
+    top: '50%',
+    marginTop: -4,
+  },
+  smallCircleBottom: {
+    bottom: 0,
+    left: '50%',
+    marginLeft: -4,
+  },
+  smallCircleLeft: {
+    left: 0,
+    top: '50%',
+    marginTop: -4,
   },
   title: {
     fontSize: 24,
@@ -359,6 +398,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
+  },
+  disabledButton: {
+    backgroundColor: '#BDBDBD',
+    opacity: 0.6,
   },
   purchaseButtonText: {
     color: '#FFFFFF',

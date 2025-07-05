@@ -13,6 +13,7 @@ import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import * as NavigationBar from 'expo-navigation-bar';
+import WhiteNoiseGenerator from './utils/WhiteNoiseGenerator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,8 +37,6 @@ export default function AnimationScreen() {
   const [wrongSequenceIndicator, setWrongSequenceIndicator] = useState(false);
   const [whiteNoiseEnabled, setWhiteNoiseEnabled] = useState(true);
   const [sleepTimer, setSleepTimer] = useState<number>(30);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [sound2, setSound2] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   
   const sequenceTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -61,6 +60,158 @@ export default function AnimationScreen() {
   }>({ rotation: null, scale: null, opacity: null });
 
   useEffect(() => {
+    const initializeScreen = async () => {
+      try {
+        // Keep screen awake
+        activateKeepAwake();
+        
+        // Enable audio for mobile devices
+        try {
+          await Audio.setAudioModeAsync({
+            allowsRecordingIOS: false,
+            staysActiveInBackground: true,
+            playsInSilentModeIOS: true,
+            shouldDuckAndroid: false,
+            playThroughEarpieceAndroid: false,
+          });
+        } catch (audioError: any) {
+          console.log('Audio mode setup failed:', audioError?.message || 'Unknown error');
+        }
+        
+        // Try to hide system UI (immersive mode) - only on mobile
+        try {
+          await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+        } catch (orientationError: any) {
+          console.log('Orientation lock not supported (likely web environment):', orientationError?.message || 'Unknown error');
+        }
+        
+        // Hide navigation bar on Android
+        try {
+          if (NavigationBar.setVisibilityAsync) {
+            await NavigationBar.setVisibilityAsync('hidden');
+          }
+        } catch (navError: any) {
+          console.log('Navigation bar control not supported:', navError?.message || 'Unknown error');
+        }
+      } catch (error) {
+        console.error('Failed to initialize screen:', error);
+      }
+    };
+
+    const loadSettings = async () => {
+      try {
+        const savedSequence = await AsyncStorage.getItem('unlockSequence');
+        const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
+        const savedTimer = await AsyncStorage.getItem('sleepTimer');
+
+        if (savedSequence) {
+          setUnlockSequence(JSON.parse(savedSequence));
+        }
+        if (savedWhiteNoise !== null) {
+          const enabled = savedWhiteNoise === 'true';
+          setWhiteNoiseEnabled(enabled);
+          if (enabled) {
+            await loadAndPlayWhiteNoise();
+          }
+        }
+        if (savedTimer) {
+          const timer = parseInt(savedTimer);
+          setSleepTimer(timer);
+          startSleepTimer(timer);
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      }
+    };
+
+    const startAnimations = () => {
+      // Opacity animation
+      const opacityAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(animationValue, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(animationValue, {
+            toValue: 0.8,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      opacityAnimation.start();
+      animationRefs.current.opacity = opacityAnimation;
+
+      // Rotation animation
+      const rotationAnimation = Animated.loop(
+        Animated.timing(rotationValue, {
+          toValue: 1,
+          duration: 8000,
+          useNativeDriver: true,
+        })
+      );
+      rotationAnimation.start();
+      animationRefs.current.rotation = rotationAnimation;
+
+      // Scale animation
+      const scaleAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleValue, {
+            toValue: 1.2,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleValue, {
+            toValue: 0.8,
+            duration: 3000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      scaleAnimation.start();
+      animationRefs.current.scale = scaleAnimation;
+    };
+
+    const cleanup = async () => {
+      try {
+        deactivateKeepAwake();
+        
+        // Stop all animations
+        if (animationRefs.current.rotation) {
+          animationRefs.current.rotation.stop();
+        }
+        if (animationRefs.current.scale) {
+          animationRefs.current.scale.stop();
+        }
+        if (animationRefs.current.opacity) {
+          animationRefs.current.opacity.stop();
+        }
+        
+        // Clean up audio with fade-out
+        try {
+          if (isPlaying) {
+            await WhiteNoiseGenerator.stop(); // This includes fade-out
+            await WhiteNoiseGenerator.cleanup();
+            setIsPlaying(false);
+          }
+        } catch (audioError) {
+          console.error('Error cleaning up audio:', audioError);
+        }
+        
+        if (sequenceTimeoutRef.current) {
+          clearTimeout(sequenceTimeoutRef.current);
+        }
+        
+        // Restore navigation bar
+        if (NavigationBar.setVisibilityAsync) {
+          await NavigationBar.setVisibilityAsync('visible');
+        }
+      } catch (error) {
+        console.error('Cleanup error:', error);
+      }
+    };
+
     const init = async () => {
       await initializeScreen();
       await loadSettings();
@@ -79,137 +230,21 @@ export default function AnimationScreen() {
       cleanup();
       backHandler.remove();
     };
-  }, []);
+  }, []);  // No external dependencies needed as all functions are defined inside useEffect
 
-  const initializeScreen = async () => {
-    try {
-      // Keep screen awake
-      activateKeepAwake();
-      
-      // Enable audio for mobile devices
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: false,
-        });
-      } catch (audioError: any) {
-        console.log('Audio mode setup failed:', audioError?.message || 'Unknown error');
-      }
-      
-      // Try to hide system UI (immersive mode) - only on mobile
-      try {
-        await ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
-      } catch (orientationError: any) {
-        console.log('Orientation lock not supported (likely web environment):', orientationError?.message || 'Unknown error');
-      }
-      
-      // Hide navigation bar on Android
-      try {
-        if (NavigationBar.setVisibilityAsync) {
-          await NavigationBar.setVisibilityAsync('hidden');
-        }
-      } catch (navError: any) {
-        console.log('Navigation bar control not supported:', navError?.message || 'Unknown error');
-      }
-    } catch (error) {
-      console.error('Failed to initialize screen:', error);
-    }
-  };
+  // initializeScreen moved inside useEffect
 
-  const cleanup = async () => {
-    try {
-      deactivateKeepAwake();
-      
-      // Stop all animations
-      if (animationRefs.current.rotation) {
-        animationRefs.current.rotation.stop();
-      }
-      if (animationRefs.current.scale) {
-        animationRefs.current.scale.stop();
-      }
-      if (animationRefs.current.opacity) {
-        animationRefs.current.opacity.stop();
-      }
-      
-      // Clean up audio
-      try {
-        if (sound) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        }
-        if (sound2) {
-          await sound2.stopAsync();
-          await sound2.unloadAsync();
-        }
-        setIsPlaying(false);
-      } catch (audioError) {
-        console.error('Error cleaning up audio:', audioError);
-      }
-      
-      if (sequenceTimeoutRef.current) {
-        clearTimeout(sequenceTimeoutRef.current);
-      }
-      
-      // Restore navigation bar
-      if (NavigationBar.setVisibilityAsync) {
-        await NavigationBar.setVisibilityAsync('visible');
-      }
-    } catch (error) {
-      console.error('Cleanup error:', error);
-    }
-  };
+  // cleanup moved inside useEffect
 
-  const loadSettings = async () => {
-    try {
-      const savedSequence = await AsyncStorage.getItem('unlockSequence');
-      const savedWhiteNoise = await AsyncStorage.getItem('whiteNoiseEnabled');
-      const savedTimer = await AsyncStorage.getItem('sleepTimer');
-
-      if (savedSequence) {
-        setUnlockSequence(JSON.parse(savedSequence));
-      }
-      if (savedWhiteNoise !== null) {
-        const enabled = savedWhiteNoise === 'true';
-        setWhiteNoiseEnabled(enabled);
-        if (enabled) {
-          await loadAndPlayWhiteNoise();
-        }
-      }
-      if (savedTimer) {
-        const timer = parseInt(savedTimer);
-        setSleepTimer(timer);
-        startSleepTimer(timer);
-      }
-    } catch (error) {
-      console.error('Failed to load settings:', error);
-    }
-  };
+  // loadSettings moved inside useEffect
 
   const loadAndPlayWhiteNoise = async () => {
     try {
       if (whiteNoiseEnabled) {
-        // Load two instances of the same audio for seamless cross-fade
-        const { sound: newSound1 } = await Audio.Sound.createAsync(
-          require('../assets/audio/white-noise.mp3'),
-          { shouldPlay: false, isLooping: false, volume: 0.7 }
-        );
-        const { sound: newSound2 } = await Audio.Sound.createAsync(
-          require('../assets/audio/white-noise.mp3'),
-          { shouldPlay: false, isLooping: false, volume: 0.0 }
-        );
-        
-        setSound(newSound1);
-        setSound2(newSound2);
-        
-        // Start playing the first sound
-        await newSound1.playAsync();
+        // Initialize and play white noise using the generator
+        await WhiteNoiseGenerator.initialize();
+        await WhiteNoiseGenerator.play();
         setIsPlaying(true);
-        
-        // Set up seamless looping with cross-fade
-        setupSeamlessLooping(newSound1, newSound2);
       }
     } catch (error) {
       console.error('Failed to load white noise:', error);
@@ -217,67 +252,7 @@ export default function AnimationScreen() {
     }
   };
 
-  const setupSeamlessLooping = async (sound1: Audio.Sound, sound2: Audio.Sound) => {
-    try {
-      // Get the duration of the audio file
-      const status = await sound1.getStatusAsync();
-      if (status.isLoaded && status.durationMillis) {
-        const duration = status.durationMillis;
-        const crossFadeDuration = 1000; // 1 second cross-fade
-        const loopInterval = duration - crossFadeDuration;
-        
-        let currentSound = 0; // 0 for sound1, 1 for sound2
-        
-        const scheduleNextLoop = () => {
-          setTimeout(async () => {
-            try {
-              if (currentSound === 0) {
-                // Start fading in sound2 and fading out sound1
-                await sound2.setPositionAsync(0);
-                await sound2.playAsync();
-                
-                // Cross-fade: fade out sound1, fade in sound2
-                for (let i = 0; i <= 10; i++) {
-                  const progress = i / 10;
-                  await sound1.setVolumeAsync(0.7 * (1 - progress));
-                  await sound2.setVolumeAsync(0.7 * progress);
-                  await new Promise(resolve => setTimeout(resolve, crossFadeDuration / 10));
-                }
-                
-                await sound1.stopAsync();
-                currentSound = 1;
-              } else {
-                // Start fading in sound1 and fading out sound2
-                await sound1.setPositionAsync(0);
-                await sound1.playAsync();
-                
-                // Cross-fade: fade out sound2, fade in sound1
-                for (let i = 0; i <= 10; i++) {
-                  const progress = i / 10;
-                  await sound2.setVolumeAsync(0.7 * (1 - progress));
-                  await sound1.setVolumeAsync(0.7 * progress);
-                  await new Promise(resolve => setTimeout(resolve, crossFadeDuration / 10));
-                }
-                
-                await sound2.stopAsync();
-                currentSound = 0;
-              }
-              
-              // Schedule the next loop
-              scheduleNextLoop();
-            } catch (error) {
-              console.error('Error in seamless looping:', error);
-            }
-          }, loopInterval);
-        };
-        
-        // Start the looping cycle
-        scheduleNextLoop();
-      }
-    } catch (error) {
-      console.error('Failed to setup seamless looping:', error);
-    }
-  };
+  // No longer needed as WhiteNoiseGenerator handles looping internally
 
   const startSleepTimer = (minutes: number) => {
     if (sleepTimer > 0) {
@@ -291,24 +266,9 @@ export default function AnimationScreen() {
     try {
       // Stop all audio with fade out
       if (isPlaying) {
-        if (sound) {
-          // Fade out audio gradually
-          for (let i = 10; i >= 0; i--) {
-            await sound.setVolumeAsync(0.7 * (i / 10));
-            await new Promise(resolve => setTimeout(resolve, 50));
-          }
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        }
-        
-        if (sound2) {
-          await sound2.stopAsync();
-          await sound2.unloadAsync();
-        }
-        
+        await WhiteNoiseGenerator.stop(); // This includes fade-out
+        await WhiteNoiseGenerator.cleanup();
         setIsPlaying(false);
-        setSound(null);
-        setSound2(null);
       }
       
       // Fade out animation
@@ -321,70 +281,16 @@ export default function AnimationScreen() {
       });
     } catch (error) {
       console.error('Fade out error:', error);
-      if (sound) {
-        try {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-        } catch (e) {}
-      }
-      if (sound2) {
-        try {
-          await sound2.stopAsync();
-          await sound2.unloadAsync();
-        } catch (e) {}
+      try {
+        await WhiteNoiseGenerator.cleanup();
+      } catch (error) {
+        console.error('Error cleaning up white noise generator:', error);
       }
       router.replace('/main-menu');
     }
   };
 
-  const startAnimations = () => {
-    // Opacity animation
-    const opacityAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(animationValue, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animationValue, {
-          toValue: 0.8,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    opacityAnimation.start();
-    animationRefs.current.opacity = opacityAnimation;
-
-    // Rotation animation
-    const rotationAnimation = Animated.loop(
-      Animated.timing(rotationValue, {
-        toValue: 1,
-        duration: 8000,
-        useNativeDriver: true,
-      })
-    );
-    rotationAnimation.start();
-    animationRefs.current.rotation = rotationAnimation;
-
-    // Scale animation
-    const scaleAnimation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scaleValue, {
-          toValue: 1.2,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scaleValue, {
-          toValue: 0.8,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    );
-    scaleAnimation.start();
-    animationRefs.current.scale = scaleAnimation;
-  };
+  // startAnimations moved inside useEffect
 
   const getCornerFromTouch = (x: number, y: number): Corner | null => {
     console.log(`Checking touch at (${x}, ${y}) against zones:`);
