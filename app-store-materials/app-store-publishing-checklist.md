@@ -3,19 +3,22 @@
 ## App Store Submission Checklist
 
 ### Apple Developer Account
-- [ ] Active Apple Developer Program Membership ($99/year)
-- [ ] App Store Connect account setup
-- [ ] Team members added with appropriate roles (if applicable)
+
+- [x] Active Apple Developer Program Membership ($99/year)
+- [x] App Store Connect account setup
+- [x] Team members added with appropriate roles (if applicable)
 
 ### App Configuration
-- [ ] App Icon Set (1024x1024 for App Store, plus all required sizes)
-- [ ] Launch Screen customized
-- [ ] App Display Name set to "My Calm Baby" in app.json
-- [ ] Bundle Identifier set (e.g., com.yourdomain.mycalmbaby)
-- [ ] Version Number set (e.g., 1.0.0)
-- [ ] Build Number set (e.g., 1)
+
+- [x] App Icon Set (1024x1024 for App Store, plus all required sizes)
+- [x] Launch Screen customized
+- [x] App Display Name set to "My Calm Baby" in app.json
+- [x] Bundle Identifier set (e.g., com.yourdomain.mycalmbaby)
+- [x] Version Number set (e.g., 1.0.0)
+- [x] Build Number set (e.g., 1)
 
 ### App Store Listing Materials
+
 - [ ] Screenshots for all required device sizes (iPhone, iPad if supported)
   - iPhone 6.5" Display (1242 x 2688 px)
   - iPhone 5.5" Display (1242 x 2208 px)
@@ -29,6 +32,7 @@
 - [ ] Promotional Text (see below)
 
 ### Technical Requirements
+
 - [ ] Privacy Policy document created
 - [ ] App Tracking Transparency implementation (if tracking users)
 - [ ] Data Collection Practices declared in App Store Connect
@@ -36,6 +40,7 @@
 - [ ] Content Rights documentation (if using licensed content)
 
 ### Build Process
+
 - [ ] app.json updated with iOS-specific configurations
 - [ ] All app assets optimized and included
 - [ ] Test build created and tested on actual devices
@@ -43,6 +48,7 @@
 - [ ] TestFlight testing completed (recommended)
 
 ### App Store Review Guidelines Compliance
+
 - [ ] Content Rating appropriately set
 - [ ] App performance verified (no crashes, acceptable load times)
 - [ ] All functionality works as described
@@ -50,6 +56,7 @@
 - [ ] Legal compliance verified
 
 ### App-Specific Requirements
+
 - [ ] Audio Background Mode properly configured
 - [ ] In-App Purchases set up (if applicable)
 - [ ] Sleep Timer functionality tested in background mode
@@ -75,6 +82,7 @@ Secondary: Health & Fitness
 ### App Description
 
 **Full Description:**
+
 ```
 My Calm Baby helps parents and caregivers soothe their little ones with gentle white noise and calming visual patterns. Perfect for naptime, bedtime, or anytime your baby needs comfort.
 
@@ -99,6 +107,7 @@ Download My Calm Baby today and discover the peaceful moments that await both yo
 ```
 
 ### Keywords (100 characters max):
+
 ```
 baby,sleep,white noise,calm,soothe,infant,lullaby,bedtime,nap,relax,sound machine,newborn
 ```
@@ -106,21 +115,25 @@ baby,sleep,white noise,calm,soothe,infant,lullaby,bedtime,nap,relax,sound machin
 ### URLs
 
 **Support URL:**
+
 ```
 https://mycalmbaby.app/support
 ```
 
 **Privacy Policy URL:**
+
 ```
 https://mycalmbaby.app/privacy
 ```
 
 ### Promotional Text (170 characters max):
+
 ```
 Soothe your baby to sleep with gentle white noise and calming visuals. Customizable sleep timer, background audio, and no ads or interruptions.
 ```
 
 ### Screenshot Captions:
+
 1. "Gentle white noise soothes your baby to sleep"
 2. "Calming visual patterns captivate and relax"
 3. "Customizable sleep timer for perfect naps"
@@ -128,6 +141,7 @@ Soothe your baby to sleep with gentle white noise and calming visuals. Customiza
 5. "Works in background while you use other apps"
 
 ### App Preview Video Script (30 seconds):
+
 ```
 [Opening shot: Parent holding baby in darkened nursery]
 Introducing My Calm Baby - the gentle way to soothe your little one to sleep.
@@ -148,6 +162,7 @@ My Calm Baby - peaceful sleep for your little one, and peace of mind for you.
 ## App Store Connect Configuration
 
 ### App Information
+
 - App Name: My Calm Baby
 - Primary Language: English
 - Bundle ID: com.yourdomain.mycalmbaby
@@ -155,23 +170,28 @@ My Calm Baby - peaceful sleep for your little one, and peace of mind for you.
 - User Access: Full Access (no restrictions)
 
 ### Pricing and Availability
+
 - Price: Free
 - Availability: All territories
 - Volume Purchase Program: Enabled (optional)
 
 ### App Review Information
+
 - Contact Information:
   - First Name: [YOUR FIRST NAME]
   - Last Name: [YOUR LAST NAME]
   - Phone Number: [YOUR PHONE NUMBER]
   - Email Address: [YOUR EMAIL ADDRESS]
 - Review Notes:
+
 ```
 My Calm Baby is a white noise and visual animation app designed to help soothe babies to sleep. The app uses programmatically generated white noise and simple animations. No login is required, and all features are available immediately upon opening the app.
 ```
+
 - Attachment (optional): Demo video showing app functionality
 
 ### Version Release
+
 - Automatic release after approval
 - Phased release (recommended): Yes
 
@@ -239,9 +259,7 @@ If you have any questions about this Privacy Policy, please contact us at:
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourdomain.mycalmbaby",
@@ -274,16 +292,19 @@ If you have any questions about this Privacy Policy, please contact us at:
 ## Build Commands
 
 ### Create Development Build
+
 ```bash
 eas build --profile development --platform ios
 ```
 
 ### Create Production Build
+
 ```bash
 eas build --profile production --platform ios
 ```
 
 ### Submit to App Store
+
 ```bash
 eas submit --platform ios
 ```

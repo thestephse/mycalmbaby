@@ -1,10 +1,10 @@
 {
   "configVersion": 0,
   "apple": {
-    "version": "1.0",
+    "version": "1.1.0",
     "info": {
       "en-US": {
-        "title": "My Calm Baby",
+        "title": "CalmBaby – White Noise",
         "subtitle": "Soothe baby with gentle noise",
         "description": "My Calm Baby helps parents and caregivers soothe their little ones with gentle white noise and calming visual patterns. Perfect for naptime, bedtime, or anytime your baby needs comfort.\n\nFEATURES:\n• Smooth, gentle white noise generation without harsh sounds or clicks\n• Beautiful, hypnotic visual animations to captivate and calm your baby\n• Customizable sleep timer (15, 30, or 60 minutes)\n• Simple, intuitive interface designed for one-handed use during late nights\n• Background audio playback so you can use other apps while the sound continues\n• No ads or interruptions to disturb your baby's peaceful state\n\nBENEFITS:\n• Helps babies fall asleep faster and stay asleep longer\n• Creates a consistent sleep environment at home or on the go\n• Masks household noises that might wake your baby\n• Establishes healthy sleep associations and routines\n• Provides comfort during fussy periods or colic episodes\n\nMy Calm Baby was designed by parents who understand the challenges of soothing a restless infant. Our scientifically-tuned white noise is specially crafted to be gentle on developing ears while effectively calming your baby.\n\nDownload My Calm Baby today and discover the peaceful moments that await both you and your little one.",
         "keywords": [
@@ -22,8 +22,8 @@
           "newborn"
         ],
         "promoText": "Soothe your baby to sleep with gentle white noise and calming visuals. Customizable sleep timer, background audio, and no ads or interruptions.",
-        "supportUrl": "https://mycalmbaby.app/support",
-        "privacyPolicyUrl": "https://mycalmbaby.app/privacy"
+        "supportUrl": "https://susv.github.io/my-calm-baby/support",
+        "privacyPolicyUrl": "https://susv.github.io/my-calm-baby/privacy-policy"
       }
     },
     "categories": [
@@ -37,9 +37,28 @@
     "review": {
       "firstName": "Stephan",
       "lastName": "Seider",
-      "email": "seider.steph@me.com",
-      "phone": "+1234567890",
+      "email": "sc@susv.xyz",
+      "phone": "+14155550199",
       "notes": "My Calm Baby is a white noise and visual animation app designed to help soothe babies to sleep. The app uses programmatically generated white noise and simple animations. No login is required, and all features are available immediately upon opening the app."
+    },
+    "advisory": {
+      "alcoholTobaccoOrDrugUseOrReferences": "NONE",
+      "contests": "NONE",
+      "gamblingSimulated": "NONE",
+      "gambling": false,
+      "horrorOrFearThemes": "NONE",
+      "matureOrSuggestiveThemes": "NONE",
+      "medicalOrTreatmentInformation": "NONE",
+      "profanityOrCrudeHumor": "NONE",
+      "sexualContentGraphicAndNudity": "NONE",
+      "sexualContentOrNudity": "NONE",
+      "violenceCartoonOrFantasy": "NONE",
+      "violenceRealistic": "NONE",
+      "violenceRealisticProlongedGraphicOrSadistic": "NONE",
+      "unrestrictedWebAccess": false,
+      "kidsAgeBand": null,
+      "ageRatingOverride": "NONE",
+      "koreaAgeRatingOverride": "NONE"
     }
   }
 }
