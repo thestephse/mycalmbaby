@@ -42,3 +42,7 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Expo / EAS config files
+app.json
+eas.json
