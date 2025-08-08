@@ -32,7 +32,13 @@ export default function RootLayout() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="main-menu" />
-        <Stack.Screen name="animation" />
+        <Stack.Screen 
+          name="animation" 
+          options={{
+            gestureEnabled: false, // Disable iOS back swipe gesture
+            animation: 'none', // Optional: disable transition animations
+          }}
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" backgroundColor="#FFFFFF" />

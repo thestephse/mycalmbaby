@@ -9,7 +9,7 @@ import {
   ActivityIndicator,
   Text,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { activateKeepAwake, deactivateKeepAwake } from 'expo-keep-awake';
@@ -361,6 +361,29 @@ export default function AnimationScreen() {
     whiteNoiseEnabled,
   ]); // Include all dependencies used in the effect
 
+  // Additional protection against iOS back swipe gesture
+  useFocusEffect(
+    React.useCallback(() => {
+      // This runs when the screen comes into focus
+      console.log('Animation screen focused - back gesture protection active');
+      
+      // Additional back handler for extra protection
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        () => {
+          console.log('Hardware back press blocked in animation screen');
+          return true; // Prevent default back action
+        }
+      );
+
+      return () => {
+        // Cleanup when screen loses focus
+        console.log('Animation screen unfocused - back gesture protection removed');
+        backHandler.remove();
+      };
+    }, [])
+  );
+
   // All these functions are now inside useEffect
 
   // This function is no longer needed as we're using AudioManager
@@ -459,10 +482,21 @@ export default function AnimationScreen() {
     }, 3000); // Default timeout
   };
 
-  // Create pan responder for touch handling
+  // Create pan responder for touch handling with swipe blocking
   const panResponder = PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      // Block swipe gestures by checking movement distance
+      const { dx, dy } = gestureState;
+      const swipeThreshold = 15; // pixels - threshold for detecting swipes
+      
+      // If movement exceeds threshold, it's likely a swipe - capture and block it
+      if (Math.abs(dx) > swipeThreshold || Math.abs(dy) > swipeThreshold) {
+        console.log(`Swipe blocked: dx=${dx}, dy=${dy}`);
+        return true; // Capture the gesture to prevent it from propagating
+      }
+      return false; // Allow small movements (taps)
+    },
     onPanResponderGrant: (evt) => {
       const { pageX, pageY, locationX, locationY } = evt.nativeEvent;
       const x = pageX || locationX || 0;
@@ -472,8 +506,29 @@ export default function AnimationScreen() {
       );
       handleTouch(x, y);
     },
-    onPanResponderMove: () => {},
-    onPanResponderRelease: () => {},
+    onPanResponderMove: (evt, gestureState) => {
+      // Block any movement to prevent swipe actions
+      const { dx, dy } = gestureState;
+      const swipeThreshold = 15;
+      
+      // If this is a swipe gesture, prevent any further action
+      if (Math.abs(dx) > swipeThreshold || Math.abs(dy) > swipeThreshold) {
+        console.log(`Swipe movement blocked: dx=${dx}, dy=${dy}`);
+        return; // Do nothing for swipe movements
+      }
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      // Only process release if it wasn't a swipe
+      const { dx, dy } = gestureState;
+      const swipeThreshold = 15;
+      
+      if (Math.abs(dx) <= swipeThreshold && Math.abs(dy) <= swipeThreshold) {
+        // This was a tap, not a swipe - safe to process
+        console.log('Touch release processed (not a swipe)');
+      } else {
+        console.log('Swipe release blocked');
+      }
+    },
   });
 
   const renderAnimationElements = () => {
