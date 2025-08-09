@@ -2,7 +2,7 @@
   "expo": {
     "name": "my-calm-baby",
     "slug": "my-calm-baby",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icons/ios-light.png",
     "scheme": "mycalmbaby",
@@ -21,7 +21,13 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.susv.mycalmbaby"
+      "package": "com.susv.mycalmbaby",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -45,6 +51,12 @@
         "projectId": "c4a55db1-191f-4c15-8004-142ebae2976d"
       }
     },
-    "owner": "thestephse"
+    "owner": "thestephse",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/c4a55db1-191f-4c15-8004-142ebae2976d"
+    }
   }
 }

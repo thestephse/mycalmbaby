@@ -9,19 +9,31 @@
       "ios": {
         "simulator": true,
         "resourceClass": "m-medium"
-      }
+      },
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium"
-      }
+      },
+      "channel": "preview"
     },
     "production": {
       "distribution": "store",
       "autoIncrement": true,
       "ios": {
         "resourceClass": "m-medium"
+      },
+      "channel": "production"
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "thestephse@gmail.com",
+        "ascAppId": "6737749838",
+        "appleTeamId": "ZZQXC2XZXZ"
       }
     }
   }
