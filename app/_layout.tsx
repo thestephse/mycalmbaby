@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
 import { useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AudioManager from './utils/AudioManager';
 
 export default function RootLayout() {
@@ -28,7 +29,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="main-menu" />
@@ -42,6 +43,6 @@ export default function RootLayout() {
         <Stack.Screen name="+not-found" />
       </Stack>
       <StatusBar style="light" backgroundColor="#FFFFFF" />
-    </>
+    </GestureHandlerRootView>
   );
 }
